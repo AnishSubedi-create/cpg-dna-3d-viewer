@@ -1,6 +1,6 @@
 # CpG DNA 3D Molecular Viewer
 
-> Interactive 3D structural comparison of CpG-A, CpG-B, and Adenoviral dsDNA — built to visualize liquid-liquid phase separation (LLPS) mechanisms in innate immunity.
+> Interactive 3D structural comparison of CpG-A, CpG-B, and Adenoviral dsDNA, built to visualize liquid-liquid phase separation (LLPS) mechanisms in innate immunity.
 
 **[▶ Live Demo](https://AnishSubedi-create.github.io/cpg-dna-3d-viewer/)**
 

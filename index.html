@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Interactive 3D structural comparison of CpG-A G-quadruplex tetramer, CpG-B linear ssDNA, and Adenoviral dsDNA — exploring HMGB1-LLPS and cGAS-STING innate immune signalling. Created by Anish Subedi.">
+<meta name="author" content="Anish Subedi">
+<meta name="keywords" content="CpG DNA, G-quadruplex, HMGB1, LLPS, TLR9, cGAS-STING, RAGE, innate immunity, molecular visualization, adenovirus, ODN2216, ODN2006">
+<meta property="og:title" content="CpG DNA 3D Viewer — Anish Subedi">
+<meta property="og:description" content="Interactive 3D visualization of CpG-A, CpG-B, and Adenoviral dsDNA structural differences and their LLPS-mediated immune signalling mechanisms.">
+<meta property="og:type" content="website">
+<title>CpG DNA 3D Viewer — Anish Subedi</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;1,400&family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;600&display=swap');
+
+  :root {
+    --bg: #0d1117;
+    --surface: #161b22;
+    --surface2: #1c2128;
+    --border: rgba(255,255,255,0.07);
+    --border-warm: rgba(210,160,80,0.18);
+    --text: #dde1e8;
+    --muted: #7a8394;
+    --amber: #d4922a;
+    --amber-light: #e8b060;
+    --blue: #4a9fd4;
+    --purple: #9b72d0;
+    --red: #d85c5c;
+    --green: #3db887;
+    --teal: #2ab4c8;
+    --mono: 'JetBrains Mono', monospace;
+    --sans: 'Inter', sans-serif;
+    --serif: 'Lora', Georgia, serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Header ── */
+  header {
+    padding: 28px 40px 22px;
+    border-bottom: 1px solid var(--border-warm);
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 20px;
+    flex-wrap: wrap;
+    background: linear-gradient(180deg, rgba(212,146,42,0.04) 0%, transparent 100%);
+  }
+  .header-left {}
+  .byline {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .author-name {
+    font-family: var(--serif);
+    font-size: 13px;
+    font-style: italic;
+    color: var(--amber-light);
+    letter-spacing: 0.01em;
+  }
+  .author-dot {
+    width: 3px; height: 3px; border-radius: 50%;
+    background: var(--muted);
+    flex-shrink: 0;
+  }
+  .author-role {
+    font-family: var(--sans);
+    font-size: 11px;
+    color: var(--muted);
+    font-weight: 400;
+    letter-spacing: 0.02em;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--teal);
+    border: 1px solid rgba(42,180,200,0.3);
+    padding: 3px 9px;
+    border-radius: 3px;
+    margin-bottom: 11px;
+  }
+  .badge::before {
+    content: '';
+    width: 5px; height: 5px; border-radius: 50%;
+    background: var(--teal);
+    opacity: 0.7;
+    flex-shrink: 0;
+  }
+  h1 {
+    font-family: var(--serif);
+    font-size: clamp(20px, 3vw, 30px);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: #f0f2f5;
+    line-height: 1.2;
+    margin-bottom: 8px;
+  }
+  h1 em {
+    font-style: italic;
+    color: var(--amber-light);
+  }
+  .subtitle {
+    font-family: var(--sans);
+    font-size: 13px;
+    color: var(--muted);
+    font-weight: 300;
+    max-width: 520px;
+    line-height: 1.65;
+  }
+  .header-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+  }
+  .header-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    justify-content: flex-end;
+  }
+  .tag {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.08em;
+    padding: 3px 8px;
+    border-radius: 3px;
+    border: 1px solid var(--border);
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+  .tag.highlight {
+    border-color: rgba(155,114,208,0.35);
+    color: var(--purple);
+  }
+  .ref-link {
+    font-family: var(--sans);
+    font-size: 11px;
+    color: var(--teal);
+    text-decoration: none;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    opacity: 0.85;
+    transition: opacity 0.15s;
+  }
+  .ref-link:hover { opacity: 1; text-decoration: underline; }
+
+  /* ── Layout ── */
+  .app { display: flex; height: calc(100vh - 160px); min-height: 480px; }
+
+  /* ── Sidebar ── */
+  .sidebar {
+    width: 220px;
+    flex-shrink: 0;
+    border-right: 1px solid var(--border-warm);
+    padding: 24px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow-y: auto;
+  }
+  .sidebar-label {
+    font-family: var(--mono);
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    padding: 0 20px 8px;
+    opacity: 0.6;
+  }
+  .nav-btn {
+    background: none;
+    border: none;
+    padding: 10px 20px;
+    text-align: left;
+    cursor: pointer;
+    border-left: 2px solid transparent;
+    transition: all 0.15s;
+    display: block;
+    width: 100%;
+  }
+  .nav-btn:hover { background: var(--surface); }
+  .nav-btn.active {
+    border-left-color: var(--amber);
+    background: rgba(212,146,42,0.06);
+  }
+  .nav-btn .nav-title {
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    display: block;
+    margin-bottom: 2px;
+  }
+  .nav-btn.active .nav-title { color: var(--amber-light); }
+  .nav-btn .nav-sub {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    display: block;
+    line-height: 1.4;
+  }
+  .nav-divider { height: 1px; background: var(--border); margin: 8px 20px; }
+
+  /* ── Main canvas area ── */
+  .main { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+  .canvas-wrap { flex: 1; position: relative; }
+  canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+  }
+  canvas:active { cursor: grabbing; }
+
+  .canvas-overlay {
+    position: absolute;
+    top: 16px; left: 16px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: rgba(255,255,255,0.3);
+    pointer-events: none;
+    line-height: 1.8;
+  }
+  .canvas-hint {
+    position: absolute;
+    bottom: 12px; right: 16px;
+    font-family: var(--mono);
+    font-size: 10px;
+    color: rgba(255,255,255,0.22);
+    pointer-events: none;
+  }
+
+  /* ── Info panel ── */
+  .info-panel {
+    border-top: 1px solid var(--border-warm);
+    padding: 14px 24px;
+    display: flex;
+    gap: 24px;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    background: var(--surface);
+  }
+  .info-main { flex: 1; min-width: 200px; }
+  .info-title {
+    font-family: var(--serif);
+    font-size: 13px;
+    font-weight: 600;
+    color: #f0f2f5;
+    margin-bottom: 5px;
+  }
+  .info-text { font-family: var(--sans); font-size: 12px; color: var(--muted); line-height: 1.7; }
+  .info-text b { color: var(--text); font-weight: 500; }
+
+  .legend { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
+  .li { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--muted); white-space: nowrap; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+
+  /* ── Controls bar ── */
+  .controls-bar {
+    padding: 7px 24px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    flex-wrap: wrap;
+    background: var(--surface2);
+  }
+  .ctrl-btn {
+    font-family: var(--mono);
+    font-size: 10px;
+    padding: 4px 12px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.15s;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+  .ctrl-btn:hover { border-color: rgba(255,255,255,0.2); color: var(--text); }
+  .ctrl-btn.on { border-color: rgba(212,146,42,0.5); color: var(--amber-light); }
+
+  /* ── Compare panel ── */
+  .compare-panel { padding: 20px 24px; overflow-y: auto; flex: 1; }
+  .compare-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 14px; }
+  .ccard {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+  }
+  .ccard h4 {
+    font-family: var(--serif);
+    font-size: 13px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+  }
+  .ccard p { font-family: var(--sans); font-size: 11px; color: var(--muted); margin: 5px 0; line-height: 1.5; }
+  .ccard span { color: var(--text); font-weight: 500; }
+  .llps-note {
+    background: rgba(155,114,208,0.05);
+    border: 1px solid rgba(155,114,208,0.15);
+    border-left: 3px solid var(--purple);
+    border-radius: 0 8px 8px 0;
+    padding: 12px 16px;
+    font-family: var(--sans);
+    font-size: 12px;
+    color: var(--muted);
+    line-height: 1.75;
+  }
+  .llps-note b { color: var(--text); font-weight: 500; }
+
+  /* ── Compare canvas ── */
+  .compare-canvas-wrap { height: 300px; position: relative; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin-top: 12px; }
+  .compare-canvas-wrap canvas { width: 100%; height: 100%; }
+
+  .panel { display: none; flex-direction: column; flex: 1; overflow: hidden; }
+  .panel.active { display: flex; }
+  .panel-3 { display: none; flex: 1; overflow: hidden; }
+  .panel-3.active { display: flex; flex-direction: column; }
+
+  /* ── Footer ── */
+  footer {
+    padding: 10px 40px;
+    border-top: 1px solid var(--border-warm);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    background: var(--surface);
+  }
+  .footer-credit {
+    font-family: var(--serif);
+    font-size: 12px;
+    font-style: italic;
+    color: var(--muted);
+  }
+  .footer-credit strong {
+    font-style: normal;
+    font-weight: 600;
+    color: var(--amber-light);
+  }
+  .footer-links {
+    display: flex;
+    gap: 16px;
+  }
+  .footer-links a {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    text-decoration: none;
+    opacity: 0.7;
+    transition: opacity 0.15s;
+  }
+  .footer-links a:hover { opacity: 1; color: var(--teal); }
+
+  /* ── Responsive ── */
+  @media(max-width: 700px) {
+    .sidebar { width: 56px; }
+    .nav-btn .nav-sub { display: none; }
+    .nav-btn .nav-title { font-size: 9px; }
+    .compare-grid { grid-template-columns: 1fr; }
+    header { padding: 16px 16px 12px; }
+    .info-panel { padding: 10px 16px; }
+    footer { padding: 8px 16px; }
+    .header-tags { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="byline">
+      <span class="author-name">Anish Subedi</span>
+      <span class="author-dot"></span>
+      <span class="author-role">Virology &amp; Innate Immunity Research</span>
+    </div>
+    <div class="badge">3D Molecular Visualization · Innate Immunity</div>
+    <h1>CpG DNA Structural <em>3D</em> Viewer</h1>
+    <p class="subtitle">Created by Anish Subedi to visualize 3D structures of CpG-A, CpG-B, and Adenoviral dsDNA — comparing how structural topology drives distinct innate immune sensing mechanisms and liquid-liquid phase separation.</p>
+  </div>
+  <div class="header-right">
+    <div class="header-tags">
+      <span class="tag highlight">LLPS</span>
+      <span class="tag highlight">HMGB1</span>
+      <span class="tag">TLR9</span>
+      <span class="tag">cGAS–STING</span>
+      <span class="tag">RAGE</span>
+      <span class="tag">G-quadruplex</span>
+    </div>
+    <a class="ref-link" href="https://www.pnas.org/doi/10.1073/pnas.2505826122" target="_blank">
+      ↗ PNAS 2025 — CpG-A induces HMGB1 LLPS
+    </a>
+    <a class="ref-link" href="https://journals.plos.org/plospathogens/article?id=10.1371/journal.ppat.1011633" target="_blank">
+      ↗ PLOS Pathogens 2023 — Protein VII / HMGB1
+    </a>
+  </div>
+</header>
+
+<div class="app">
+  <nav class="sidebar">
+    <div class="sidebar-label">Structures</div>
+    <button class="nav-btn active" onclick="switchPanel(0)">
+      <span class="nav-title">CpG-A</span>
+      <span class="nav-sub">ODN2216<br>G-quadruplex tetramer</span>
+    </button>
+    <button class="nav-btn" onclick="switchPanel(1)">
+      <span class="nav-title">CpG-B</span>
+      <span class="nav-sub">ODN2006<br>Linear ssDNA, full PS</span>
+    </button>
+    <button class="nav-btn" onclick="switchPanel(2)">
+      <span class="nav-title">Adenoviral DNA</span>
+      <span class="nav-sub">B-form dsDNA<br>~36 kbp genome</span>
+    </button>
+    <div class="nav-divider"></div>
+    <div class="sidebar-label">Analysis</div>
+    <button class="nav-btn" onclick="switchPanel(3)">
+      <span class="nav-title">Compare</span>
+      <span class="nav-sub">LLPS mechanisms<br>&amp; immune pathways</span>
+    </button>
+    <div class="nav-divider"></div>
+    <div style="padding: 12px 20px; margin-top: auto;">
+      <p style="font-family: var(--serif); font-size: 11px; font-style: italic; color: var(--muted); line-height: 1.6;">
+        A personal project exploring how DNA topology shapes innate immune fate.
+      </p>
+      <p style="font-family: var(--mono); font-size: 9px; color: var(--muted); margin-top: 8px; opacity: 0.5; letter-spacing: 0.04em;">
+        — Anish Subedi
+      </p>
+    </div>
+  </nav>
+
+  <div class="main" id="mainArea">
+
+    <!-- Panel 0: CpG-A -->
+    <div class="panel active" id="panel0">
+      <div class="canvas-wrap">
+        <canvas id="c0"></canvas>
+        <div class="canvas-overlay">CpG-A ODN2216 · G-quadruplex tetramer<br>4-strand parallel topology · K⁺ channel</div>
+        <div class="canvas-hint">drag to rotate · scroll to zoom</div>
+      </div>
+      <div class="controls-bar">
+        <button class="ctrl-btn on" id="btn0" onclick="toggleAuto(0)">⟳ AUTO-ROTATE</button>
+        <button class="ctrl-btn" onclick="resetView(0)">⊡ RESET</button>
+      </div>
+      <div class="info-panel">
+        <div class="info-main">
+          <div class="info-title">CpG-A (ODN2216) · 20-mer</div>
+          <div class="info-text">
+            5'-gg<b>GGGACGATCGTC</b>gggggg-3' · Mixed PS/PO backbone<br>
+            Four strands tetramerize via poly-G G-quadruplex caps (parallel topology, K⁺-stabilized at ~2.8 Å from O6).
+            Palindromic PO center forms duplex stems. Forms ~100–200 nm globular aggregates.
+            Binds HMGB1 → <b>LLPS condensates</b> → RAGE-SLP76 → inflammasome + IFN-α/β (pDC).
+          </div>
+        </div>
+        <div class="legend">
+          <div class="li"><div class="dot" style="background:#fbbf24"></div>poly-G tail (PS)</div>
+          <div class="li"><div class="dot" style="background:#4a9fd4"></div>palindromic duplex (PO)</div>
+          <div class="li"><div class="dot" style="background:#9b72d0"></div>G-tetrad plane</div>
+          <div class="li"><div class="dot" style="background:#d85c5c"></div>K⁺ ion</div>
+          <div class="li"><div class="dot" style="background:#3db887"></div>CpG motif base</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel 1: CpG-B -->
+    <div class="panel" id="panel1">
+      <div class="canvas-wrap">
+        <canvas id="c1"></canvas>
+        <div class="canvas-overlay">CpG-B ODN2006 · linear ssDNA<br>Full phosphorothioate backbone · 24-mer</div>
+        <div class="canvas-hint">drag to rotate · scroll to zoom</div>
+      </div>
+      <div class="controls-bar">
+        <button class="ctrl-btn on" id="btn1" onclick="toggleAuto(1)">⟳ AUTO-ROTATE</button>
+        <button class="ctrl-btn" onclick="resetView(1)">⊡ RESET</button>
+      </div>
+      <div class="info-panel">
+        <div class="info-main">
+          <div class="info-title">CpG-B (ODN2006) · 24-mer</div>
+          <div class="info-text">
+            5'-tcg<b>cgt</b>ttt<b>gtcg</b>tttt<b>gtcg</b>tt-3' · Full phosphorothioate backbone<br>
+            No poly-G ends → no G-quadruplex. Stays as flexible linear ssDNA (~7–8 nm).
+            Three GTCGTT CpG motifs. Strong <b>NF-κB / B-cell activator</b> via direct TLR9 engagement.
+            Weak IFN-α. Does NOT trigger HMGB1-LLPS condensates.
+          </div>
+        </div>
+        <div class="legend">
+          <div class="li"><div class="dot" style="background:#d85c5c"></div>full PS backbone</div>
+          <div class="li"><div class="dot" style="background:#f59e0b"></div>phosphorothioate sulfur</div>
+          <div class="li"><div class="dot" style="background:#3db887"></div>CpG motif (GTCGTT ×3)</div>
+          <div class="li"><div class="dot" style="background:#9b72d0"></div>intervening bases</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel 2: Adenoviral dsDNA -->
+    <div class="panel" id="panel2">
+      <div class="canvas-wrap">
+        <canvas id="c2"></canvas>
+        <div class="canvas-overlay">Adenoviral dsDNA · B-form double helix<br>10.5 bp/turn · major groove ~22 Å · minor groove ~12 Å</div>
+        <div class="canvas-hint">drag to rotate · scroll to zoom</div>
+      </div>
+      <div class="controls-bar">
+        <button class="ctrl-btn on" id="btn2" onclick="toggleAuto(2)">⟳ AUTO-ROTATE</button>
+        <button class="ctrl-btn" onclick="resetView(2)">⊡ RESET</button>
+      </div>
+      <div class="info-panel">
+        <div class="info-main">
+          <div class="info-title">Adenoviral dsDNA · ~36 kbp linear genome (representative 50 bp)</div>
+          <div class="info-text">
+            B-form double helix, right-handed, 10.5 bp/turn, phosphodiester backbone.<br>
+            <b>Protein VII</b> compacts viral DNA in virion and sequesters HMGB1 via A-box interaction → suppresses IFN-β.
+            Cytosolic dsDNA (post-lysis) → <b>cGAS·DNA LLPS</b> → cGAMP → STING → TBK1 → IRF3 → IFN-I.
+          </div>
+        </div>
+        <div class="legend">
+          <div class="li"><div class="dot" style="background:#4a9fd4"></div>strand 1 (5'→3')</div>
+          <div class="li"><div class="dot" style="background:#d85c5c"></div>strand 2 (3'→5')</div>
+          <div class="li"><div class="dot" style="background:#3db887"></div>Watson-Crick base pair</div>
+          <div class="li"><div class="dot" style="background:#d4922a"></div>major groove (~22 Å)</div>
+          <div class="li"><div class="dot" style="background:#9b72d0"></div>minor groove (~12 Å)</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel 3: Compare -->
+    <div class="panel-3" id="panel3">
+      <div class="compare-panel">
+        <div class="compare-grid">
+          <div class="ccard">
+            <h4 style="color:#9b72d0">CpG-A · ODN2216</h4>
+            <p>Structure: <span>G-quadruplex tetramer</span></p>
+            <p>Backbone: <span>Mixed PS/PO</span></p>
+            <p>Size: <span>20-mer · ~100–200 nm</span></p>
+            <p>Sensor: <span>TLR9 (pDC endosome)</span></p>
+            <p>HMGB1: <span>Direct binding → LLPS → RAGE → SLP76 → inflammasome</span></p>
+            <p>LLPS type: <span>HMGB1·CpG-A condensates</span></p>
+            <p>Key output: <span>IFN-α/β, IL-1β</span></p>
+          </div>
+          <div class="ccard">
+            <h4 style="color:#d85c5c">CpG-B · ODN2006</h4>
+            <p>Structure: <span>Linear ssDNA</span></p>
+            <p>Backbone: <span>Full phosphorothioate</span></p>
+            <p>Size: <span>24-mer · ~7–8 nm</span></p>
+            <p>Sensor: <span>TLR9 (B cells, monocytes)</span></p>
+            <p>HMGB1: <span>Weak — no LLPS; direct TLR9 dominates</span></p>
+            <p>LLPS type: <span>None</span></p>
+            <p>Key output: <span>IL-6, TNF-α, B-cell activation</span></p>
+          </div>
+          <div class="ccard">
+            <h4 style="color:#4a9fd4">Adenoviral dsDNA</h4>
+            <p>Structure: <span>B-form dsDNA, linear</span></p>
+            <p>Backbone: <span>Phosphodiester (natural)</span></p>
+            <p>Size: <span>~36 kbp genome</span></p>
+            <p>Sensor: <span>cGAS (cytosol); TLR9 weak</span></p>
+            <p>HMGB1: <span>Protein VII sequesters HMGB1 (A-box) → blocks IFN-β</span></p>
+            <p>LLPS type: <span>cGAS·dsDNA condensates → STING</span></p>
+            <p>Key output: <span>IFN-β, ISG15, MX2</span></p>
+          </div>
+        </div>
+        <div class="llps-note">
+          <b>LLPS mechanistic comparison:</b> CpG-A drives HMGB1 phase separation via the RAGE/SLP76 axis (PNAS 2025) — the G-quadruplex topology provides multivalent scaffolding unavailable to linear ODNs.
+          Adenoviral dsDNA triggers a distinct <b>cGAS·DNA LLPS → cGAMP → STING</b> condensate pathway; adenovirus counteracts this using protein VII to physically sequester HMGB1 in chromatin via A-box interaction.
+          CpG-B engages neither condensate pathway — it activates TLR9 through direct 1:1 endosomal engagement, driving NF-κB rather than IRF7/IRF3.
+        </div>
+        <div class="compare-canvas-wrap">
+          <canvas id="c3"></canvas>
+        </div>
+        <div class="controls-bar" style="border:none; padding: 8px 0 0;">
+          <button class="ctrl-btn on" id="btn3" onclick="toggleAuto(3)">⟳ AUTO-ROTATE</button>
+          <button class="ctrl-btn" onclick="resetView(3)">⊡ RESET</button>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /main -->
+</div><!-- /app -->
+
+<footer>
+  <div class="footer-credit">
+    Created by <strong>Anish Subedi</strong> to visualize 3D molecular structures in innate immunity research.
+  </div>
+  <div class="footer-links">
+    <a href="https://github.com" target="_blank">GitHub</a>
+    <a href="https://www.pnas.org/doi/10.1073/pnas.2505826122" target="_blank">PNAS 2025</a>
+    <a href="mailto:">Contact</a>
+  </div>
+</footer>
+
+<script>
+(function(){
+  // ── State ──
+  const N = 4;
+  const S = Array.from({length:N},()=>({rx:0.30,ry:0.22,auto:true,zoom:1.0,defRx:0.30,defRy:0.22}));
+  const D = Array.from({length:N},()=>({on:false,lx:0,ly:0}));
+  let activePanel = 0;
+
+  // ── Navigation ──
+  window.switchPanel = function(i){
+    document.querySelectorAll('.panel').forEach((p,j)=>p.classList.toggle('active',j===i));
+    const p3 = document.getElementById('panel3');
+    p3.classList.toggle('active', i===3);
+    if(i===3){ p3.style.display='flex'; } else { p3.style.display=''; }
+    document.querySelectorAll('.nav-btn').forEach((b,j)=>b.classList.toggle('active',j===i));
+    activePanel = i;
+  };
+  window.toggleAuto = function(i){
+    S[i].auto=!S[i].auto;
+    document.getElementById('btn'+i).classList.toggle('on',S[i].auto);
+  };
+  window.resetView = function(i){
+    S[i].rx=S[i].defRx; S[i].ry=S[i].defRy; S[i].zoom=1.0;
+  };
+
+  // ── Input ──
+  for(let i=0;i<N;i++){(function(idx){
+    const c=document.getElementById('c'+idx);
+    const s=S[idx], d=D[idx];
+    c.addEventListener('mousedown',e=>{d.on=true;d.lx=e.clientX;d.ly=e.clientY;});
+    c.addEventListener('mousemove',e=>{if(!d.on)return;s.ry+=(e.clientX-d.lx)*0.011;s.rx+=(e.clientY-d.ly)*0.011;d.lx=e.clientX;d.ly=e.clientY;});
+    c.addEventListener('mouseup',()=>d.on=false);
+    c.addEventListener('mouseleave',()=>d.on=false);
+    c.addEventListener('wheel',e=>{s.zoom=Math.max(0.35,Math.min(2.8,s.zoom-e.deltaY*0.001));e.preventDefault();},{passive:false});
+    c.addEventListener('touchstart',e=>{d.on=true;d.lx=e.touches[0].clientX;d.ly=e.touches[0].clientY;},{passive:true});
+    c.addEventListener('touchmove',e=>{if(!d.on)return;s.ry+=(e.touches[0].clientX-d.lx)*0.013;s.rx+=(e.touches[0].clientY-d.ly)*0.013;d.lx=e.touches[0].clientX;d.ly=e.touches[0].clientY;e.preventDefault();},{passive:false});
+    c.addEventListener('touchend',()=>d.on=false);
+  })(i);}
+
+  // ── 3D math ──
+  function M(rx,ry){const cx=Math.cos(rx),sx=Math.sin(rx),cy=Math.cos(ry),sy=Math.sin(ry);return[cy,0,sy,sx*sy,cx,-sx*cy,-cx*sy,sx,cx*cy];}
+  function pr(p,m,cx,cy,fov,z){
+    const x=m[0]*p[0]+m[1]*p[1]+m[2]*p[2];
+    const y=m[3]*p[0]+m[4]*p[1]+m[5]*p[2];
+    const zz=m[6]*p[0]+m[7]*p[1]+m[8]*p[2];
+    const s=fov/(fov+zz*z);
+    return[cx+x*z*s,cy+y*z*s,zz];
+  }
+
+  // ── Geometry ──
+  function gCpgA(){
+    const o=[];
+    const R=55,SA=[Math.PI/4,3*Math.PI/4,5*Math.PI/4,7*Math.PI/4];
+    for(let s=0;s<4;s++){
+      const a0=SA[s];
+      const mkT=(y0,y1,n,col)=>{const p=[];for(let i=0;i<=n;i++){const t=i/n;const y=y0+(y1-y0)*t;const tw=t*Math.PI*2.5+a0;const r=R+5*Math.sin(t*Math.PI);p.push([r*Math.cos(tw),y,r*Math.sin(tw)]);}return{type:'tube',pts:p,col,w:4.5};};
+      o.push(mkT(210,80,10,'#f59e0b'));
+      o.push(mkT(80,-80,14,'#3b82f6'));
+      o.push(mkT(-80,-210,8,'#f59e0b'));
+      for(let i=0;i<=22;i++){const t=i/22;const y=210-420*t;const tw=t*Math.PI*3.8+a0;const r=R+5;const isc=y>-82&&y<82;o.push({type:'sph',p:[r*Math.cos(tw),y,r*Math.sin(tw)],r:isc?4:3.2,col:isc?'#60a5fa':'#fbbf24'});}
+    }
+    const TY=[158,130,105,80,-80,-105,-130,-158],TW=[0,0.38,0.76,1.14,0.19,0.57,0.95,1.33];
+    TY.forEach((y,ti)=>{const tw=TW[ti];for(let i=0;i<4;i++){const a1=tw+i*Math.PI/2,a2=tw+(i+1)*Math.PI/2;o.push({type:'quad',pts:[[24*Math.cos(a1-0.2),y,24*Math.sin(a1-0.2)],[50*Math.cos(a1-0.3),y,50*Math.sin(a1-0.3)],[50*Math.cos(a1+0.3),y,50*Math.sin(a1+0.3)],[24*Math.cos(a1+0.2),y,24*Math.sin(a1+0.2)]],col:'rgba(139,92,246,0.25)',stroke:'rgba(139,92,246,0.55)'});o.push({type:'hbond',p1:[36*Math.cos(a1),y,36*Math.sin(a1)],p2:[36*Math.cos(a2),y,36*Math.sin(a2)],col:'rgba(192,168,255,0.5)'});}});
+    [-145,-118,-92,0,92,118,145].forEach(ky=>o.push({type:'sph',p:[0,ky,0],r:7.5,col:'#ef4444'}));
+    [-55,-22,22,55].forEach(cy=>{[1,3].forEach(si=>{const a=SA[si]+0.14,r=R+14;o.push({type:'sph',p:[r*Math.cos(a),cy,r*Math.sin(a)],r:5,col:'#10b981'});});});
+    for(let y=-76;y<=76;y+=11){const t=(y+80)/160;[[0,2],[1,3]].forEach(([s1,s2])=>{const a1=SA[s1]+t*Math.PI*2.5,a2=SA[s2]+t*Math.PI*2.5;o.push({type:'stick',p1:[R*Math.cos(a1),y,R*Math.sin(a1)],p2:[R*Math.cos(a2),y,R*Math.sin(a2)],col:'rgba(80,140,220,0.25)',w:2.5});});}
+    return o;
+  }
+
+  function gCpgB(){
+    const o=[];const N=24,RISE=13,TW=Math.PI*2/10.5,R=28;
+    const pts=[];for(let i=0;i<=N;i++){const y=i*RISE-N*RISE/2;pts.push([R*Math.cos(i*TW),y,R*Math.sin(i*TW)]);}
+    o.push({type:'tube',pts,col:'#ef4444',w:5});
+    for(let i=0;i<N;i++){const y=(i+0.5)*RISE-N*RISE/2,a=(i+0.5)*TW;o.push({type:'sph',p:[R*Math.cos(a),y,R*Math.sin(a)],r:4,col:'#f59e0b'});const bR=R+22,bx=bR*Math.cos(a),bz=bR*Math.sin(a);o.push({type:'stick',p1:[R*Math.cos(a),y,R*Math.sin(a)],p2:[bx,y,bz],col:'rgba(150,150,180,0.35)',w:2});const isCpg=i===1||i===2||i===9||i===10||i===18||i===19;o.push({type:'sph',p:[bx,y,bz],r:isCpg?6.5:4.5,col:isCpg?'#10b981':'#8b5cf6'});}
+    return o;
+  }
+
+  function gAdvDNA(){
+    const o=[];const N=50,RISE=7.0,TW=Math.PI*2/10.5,R=12;
+    const p1=[],p2=[];for(let i=0;i<=N;i++){const y=i*RISE-N*RISE/2;p1.push([(R+3)*Math.cos(i*TW),y,(R+3)*Math.sin(i*TW)]);p2.push([(R+3)*Math.cos(i*TW+Math.PI),y,(R+3)*Math.sin(i*TW+Math.PI)]);}
+    o.push({type:'tube',pts:p1,col:'#3b82f6',w:5});o.push({type:'tube',pts:p2,col:'#ef4444',w:5});
+    for(let i=0;i<=N;i++){const y=i*RISE-N*RISE/2,a=i*TW;o.push({type:'sph',p:[(R+3)*Math.cos(a),y,(R+3)*Math.sin(a)],r:3,col:'#60a5fa'});o.push({type:'sph',p:[(R+3)*Math.cos(a+Math.PI),y,(R+3)*Math.sin(a+Math.PI)],r:3,col:'#f87171'});}
+    for(let i=0;i<N;i++){const y=(i+0.5)*RISE-N*RISE/2,a=(i+0.5)*TW;o.push({type:'stick',p1:[(R+3)*Math.cos(a),y,(R+3)*Math.sin(a)],p2:[(R+3)*Math.cos(a+Math.PI),y,(R+3)*Math.sin(a+Math.PI)],col:'rgba(16,185,129,0.45)',w:2.5});}
+    for(let i=2;i<N;i+=5){const y=i*RISE-N*RISE/2,a=i*TW;for(let k=0;k<3;k++){const aa=a+k*TW;o.push({type:'sph',p:[(R+22)*Math.cos(aa),y,(R+22)*Math.sin(aa)],r:2.5,col:'rgba(245,158,11,0.35)'});}}
+    for(let i=4;i<N;i+=5){const y=i*RISE-N*RISE/2,a=i*TW+Math.PI;o.push({type:'sph',p:[(R+10)*Math.cos(a),y,(R+10)*Math.sin(a)],r:2,col:'rgba(139,92,246,0.35)'});}
+    return o;
+  }
+
+  function gCompare(){
+    const o=[];
+    // CpG-A left
+    const OA=-155,RA=28,SA=[Math.PI/4,3*Math.PI/4,5*Math.PI/4,7*Math.PI/4];
+    for(let s=0;s<4;s++){const a0=SA[s];const pp=[];for(let i=0;i<=20;i++){const t=i/20;const y=-85+170*t;const tw=t*Math.PI*3+a0;pp.push([OA+RA*Math.cos(tw),y,RA*Math.sin(tw)]);}o.push({type:'tubeGrad',pts:pp,w:3.5});}
+    [-60,-28,28,60].forEach(ky=>{for(let i=0;i<4;i++){const a1=i*Math.PI/2;o.push({type:'quad',pts:[[OA+13*Math.cos(a1-0.22),ky,13*Math.sin(a1-0.22)],[OA+28*Math.cos(a1-0.32),ky,28*Math.sin(a1-0.32)],[OA+28*Math.cos(a1+0.32),ky,28*Math.sin(a1+0.32)],[OA+13*Math.cos(a1+0.22),ky,13*Math.sin(a1+0.22)]],col:'rgba(139,92,246,0.28)',stroke:'rgba(139,92,246,0.6)'});}});
+    [-48,-16,16,48].forEach(ky=>o.push({type:'sph',p:[OA,ky,0],r:5.5,col:'#ef4444'}));
+    for(let i=0;i<18;i++){const a=i/18*Math.PI*2;o.push({type:'sph',p:[OA+55*Math.cos(a),60*Math.sin(a),0],r:3,col:'rgba(139,92,246,0.18)'});}
+    // CpG-B center
+    const OB=0,NB=18,RB=22,TTW=Math.PI*2/10.5,RB2=9;
+    const bpts=[];for(let i=0;i<=NB;i++){const y=i*RB2-NB*RB2/2;bpts.push([OB+RB*Math.cos(i*TTW),y,RB*Math.sin(i*TTW)]);}
+    o.push({type:'tube',pts:bpts,col:'#ef4444',w:4});
+    [2,4,8,10,14,16].forEach(i=>{const y=i*RB2-NB*RB2/2,a=i*TTW;const isCpg=i===2||i===4||i===8||i===10||i===14||i===16;o.push({type:'sph',p:[OB+RB+15,y,0],r:isCpg?5:3.5,col:isCpg?'#10b981':'#8b5cf6'});o.push({type:'stick',p1:[OB+RB*Math.cos(a),y,RB*Math.sin(a)],p2:[OB+RB+15,y,0],col:'rgba(150,150,180,0.35)',w:1.5});});
+    // Adenoviral dsDNA right
+    const OD=155,ND=26,RD=9,TTW2=Math.PI*2/10.5,RD2=7.5;
+    const dp1=[],dp2=[];for(let i=0;i<=ND;i++){const y=i*RD2-ND*RD2/2;dp1.push([OD+(RD+3)*Math.cos(i*TTW2),y,(RD+3)*Math.sin(i*TTW2)]);dp2.push([OD+(RD+3)*Math.cos(i*TTW2+Math.PI),y,(RD+3)*Math.sin(i*TTW2+Math.PI)]);}
+    o.push({type:'tube',pts:dp1,col:'#3b82f6',w:4});o.push({type:'tube',pts:dp2,col:'#ef4444',w:4});
+    for(let i=0;i<ND;i++){const y=(i+0.5)*RD2-ND*RD2/2,a=(i+0.5)*TTW2;o.push({type:'stick',p1:[OD+(RD+3)*Math.cos(a),y,(RD+3)*Math.sin(a)],p2:[OD+(RD+3)*Math.cos(a+Math.PI),y,(RD+3)*Math.sin(a+Math.PI)],col:'rgba(16,185,129,0.4)',w:2});}
+    for(let i=0;i<16;i++){const a=i/16*Math.PI*2;o.push({type:'sph',p:[OD+52*Math.cos(a),58*Math.sin(a),0],r:3,col:'rgba(59,130,246,0.2)'});}
+    return o;
+  }
+
+  const GEOM=[gCpgA(),gCpgB(),gAdvDNA(),gCompare()];
+
+  // ── Render ──
+  function draw(idx){
+    const c=document.getElementById('c'+idx);
+    if(!c||!c.offsetParent&&idx!==3) return;
+    const dpr=window.devicePixelRatio||1;
+    const cw=c.clientWidth||800,ch=c.clientHeight||420;
+    if(c.width!==Math.round(cw*dpr)||c.height!==Math.round(ch*dpr)){c.width=Math.round(cw*dpr);c.height=Math.round(ch*dpr);}
+    const ctx=c.getContext('2d');
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    ctx.clearRect(0,0,cw,ch);
+    // dark bg
+    ctx.fillStyle='#0d1117';ctx.fillRect(0,0,cw,ch);
+    const s=S[idx],fov=700,CX=cw/2,CY=ch/2;
+    const mat=M(s.rx,s.ry);
+    const sorted=GEOM[idx].map(o=>{
+      let z=0;
+      if(o.type==='tube'||o.type==='tubeGrad'){const m=o.pts[Math.floor(o.pts.length/2)];z=pr(m,mat,CX,CY,fov,s.zoom)[2];}
+      else if(o.type==='sph'){z=pr(o.p,mat,CX,CY,fov,s.zoom)[2];}
+      else if(o.type==='quad'){const c2=o.pts.reduce((a,p)=>[a[0]+p[0]/4,a[1]+p[1]/4,a[2]+p[2]/4],[0,0,0]);z=pr(c2,mat,CX,CY,fov,s.zoom)[2];}
+      else if(o.type==='hbond'||o.type==='stick'){const m=[(o.p1[0]+o.p2[0])/2,(o.p1[1]+o.p2[1])/2,(o.p1[2]+o.p2[2])/2];z=pr(m,mat,CX,CY,fov,s.zoom)[2];}
+      return{o,z};
+    }).sort((a,b)=>b.z-a.z);
+
+    for(const{o}of sorted){
+      if(o.type==='tube'){
+        ctx.beginPath();let f=true;for(const p of o.pts){const[x,y]=pr(p,mat,CX,CY,fov,s.zoom);f?ctx.moveTo(x,y):ctx.lineTo(x,y);f=false;}
+        ctx.strokeStyle=o.col;ctx.lineWidth=o.w||3;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke();
+      } else if(o.type==='tubeGrad'){
+        const n=o.pts.length;
+        for(let i=0;i<n-1;i++){const t=i/(n-1);const col=(t<0.27||t>0.73)?'#f59e0b':'#3b82f6';const[x1,y1]=pr(o.pts[i],mat,CX,CY,fov,s.zoom);const[x2,y2]=pr(o.pts[i+1],mat,CX,CY,fov,s.zoom);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.strokeStyle=col;ctx.lineWidth=o.w||3;ctx.lineCap='round';ctx.stroke();}
+      } else if(o.type==='sph'){
+        const[px,py,pz]=pr(o.p,mat,CX,CY,fov,s.zoom);const sc=fov/(fov+pz*s.zoom);const r=Math.max(1,(o.r||5)*s.zoom*sc);
+        ctx.beginPath();ctx.arc(px,py,r,0,Math.PI*2);ctx.fillStyle=o.col;ctx.fill();
+        if(r>3){ctx.beginPath();ctx.arc(px-r*0.28,py-r*0.28,r*0.3,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,0.28)';ctx.fill();}
+      } else if(o.type==='quad'){
+        ctx.beginPath();let f=true;for(const p of o.pts){const[x,y]=pr(p,mat,CX,CY,fov,s.zoom);f?ctx.moveTo(x,y):ctx.lineTo(x,y);f=false;}
+        ctx.closePath();ctx.fillStyle=o.col;ctx.fill();ctx.strokeStyle=o.stroke||o.col;ctx.lineWidth=0.8;ctx.stroke();
+      } else if(o.type==='hbond'){
+        const[x1,y1]=pr(o.p1,mat,CX,CY,fov,s.zoom);const[x2,y2]=pr(o.p2,mat,CX,CY,fov,s.zoom);
+        ctx.save();ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.strokeStyle=o.col;ctx.lineWidth=1;ctx.stroke();ctx.restore();
+      } else if(o.type==='stick'){
+        const[x1,y1]=pr(o.p1,mat,CX,CY,fov,s.zoom);const[x2,y2]=pr(o.p2,mat,CX,CY,fov,s.zoom);
+        ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.strokeStyle=o.col;ctx.lineWidth=o.w||2;ctx.lineCap='round';ctx.stroke();
+      }
+    }
+    // Signature watermark
+    ctx.font='italic 10px "Lora",Georgia,serif';
+    ctx.fillStyle='rgba(232,176,96,0.18)';
+    ctx.textAlign='right';
+    ctx.fillText('Anish Subedi',cw-14,ch-14);
+    ctx.textAlign='left';
+    // Compare panel labels
+    if(idx===3){
+      ctx.font='bold 11px "JetBrains Mono",monospace';ctx.textAlign='center';
+      [[-155,'CpG-A','#9b72d0'],[0,'CpG-B','#d85c5c'],[155,'Adenoviral\ndsDNA','#4a9fd4']].forEach(([bx,label,col])=>{
+        const[x,y]=pr([bx,-105,0],mat,CX,CY,fov,s.zoom);ctx.fillStyle=col;label.split('\n').forEach((l,i)=>ctx.fillText(l,x,y+i*14));
+      });
+      ctx.font='9px "JetBrains Mono",monospace';
+      const[lx,ly]=pr([-155,82,0],mat,CX,CY,fov,s.zoom);ctx.fillStyle='rgba(139,92,246,0.85)';ctx.fillText('HMGB1-LLPS',lx,ly);
+      const[dx,dy]=pr([155,76,0],mat,CX,CY,fov,s.zoom);ctx.fillStyle='rgba(59,130,246,0.85)';ctx.fillText('cGAS-LLPS',dx,dy);
+    }
+  }
+
+  // ── Loop ──
+  let last=0;
+  function loop(ts){
+    const dt=Math.min((ts-last)/1000,0.05);last=ts;
+    for(let i=0;i<N;i++){if(S[i].auto&&!D[i].on)S[i].ry+=0.009;}
+    draw(activePanel);
+    if(activePanel===3) draw(3);
+    requestAnimationFrame(loop);
+  }
+  requestAnimationFrame(ts=>{last=ts;requestAnimationFrame(loop);});
+  window.addEventListener('resize',()=>{for(let i=0;i<N;i++){const c=document.getElementById('c'+i);if(c){c.width=0;c.height=0;}}});
+})();
+</script>
+</body>
+</html>

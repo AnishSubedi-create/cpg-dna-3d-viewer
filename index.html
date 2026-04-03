@@ -725,7 +725,7 @@
   // ── Render ──
   function draw(idx){
     const c=document.getElementById('c'+idx);
-    if(!c||!c.offsetParent&&idx!==3) return;
+    if(!c) return;;
     const dpr=window.devicePixelRatio||1;
     const cw=c.clientWidth||800,ch=c.clientHeight||420;
     if(c.width!==Math.round(cw*dpr)||c.height!==Math.round(ch*dpr)){c.width=Math.round(cw*dpr);c.height=Math.round(ch*dpr);}

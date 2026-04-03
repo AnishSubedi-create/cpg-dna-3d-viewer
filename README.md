@@ -2,7 +2,7 @@
 
 > Interactive 3D structural comparison of CpG-A, CpG-B, and Adenoviral dsDNA — built to visualize liquid-liquid phase separation (LLPS) mechanisms in innate immunity.
 
-**[▶ Live Demo](https://your-username.github.io/cpg-dna-3d-viewer)**
+**[▶ Live Demo]([https://anishsubedi.github.io/cpg-dna-3d-viewer](https://AnishSubedi-create.github.io/cpg-dna-3d-viewer/))**
 
 ---
 
@@ -17,8 +17,6 @@ This is a zero-dependency, browser-based molecular visualization tool built enti
 | **Adenoviral dsDNA** | B-form dsDNA | ~36 kbp linear genome, protein VII-HMGB1 axis |
 
 The Compare tab visualizes all three side-by-side and contextualizes their distinct **liquid-liquid phase separation (LLPS)** mechanisms relevant to HMGB1, cGAS-STING, and RAGE signaling.
-
----
 
 ## The biology it encodes
 
@@ -39,8 +37,6 @@ The Compare tab visualizes all three side-by-side and contextualizes their disti
 - Adenovirus protein VII sequesters HMGB1 via A-box interaction → suppresses IFN-β release
 - Cytosolic dsDNA (post-lysis) → cGAS·DNA LLPS → cGAMP → STING → TBK1 → IRF3 → IFN-I
 - **Biological relevance:** Two competing axes — viral immune evasion (protein VII/HMGB1) vs host sensing (cGAS-STING)
-
----
 
 ## Usage
 
@@ -68,8 +64,6 @@ No build step. No npm install. No server required.
 </iframe>
 ```
 
----
-
 ## Interaction
 
 | Input | Action |
@@ -79,8 +73,6 @@ No build step. No npm install. No server required.
 | **⟳ Auto-rotate button** | Toggle continuous rotation |
 | **⊡ Reset button** | Return to default orientation |
 | **Sidebar tabs** | Switch between structures |
-
----
 
 ## Technical details
 
@@ -112,9 +104,6 @@ B-form dsDNA (adenoviral):
 cpg-dna-3d-viewer/
 └── index.html      # entire application — self-contained, ~700 lines
 ```
-
----
-
 ## Scientific context
 
 This viewer was built to support a journal club presentation on LLPS mechanisms in innate immunity, specifically comparing how structurally distinct DNA ligands activate different immune pathways:
@@ -124,8 +113,6 @@ This viewer was built to support a journal club presentation on LLPS mechanisms 
 - **Adenovirus protein VII → HMGB1 A-box sequestration → IFN-β suppression** (PLOS Pathogens 2023)
 
 The G-quadruplex topology of CpG-A is the structural basis for its HMGB1 binding and phase separation capacity — a property absent in CpG-B (linear ssDNA) and mechanistically distinct from the long B-form dsDNA that drives cGAS condensation.
-
----
 
 ## Key references
 
@@ -139,8 +126,6 @@ The G-quadruplex topology of CpG-A is the structural basis for its HMGB1 binding
 
 5. *Structural basis of CpG and inhibitory DNA recognition by Toll-like receptor 9.* Nature 2015. https://doi.org/10.1038/nature14138
 
----
-
 ## Contributing
 
 Pull requests welcome. If you want to add:
@@ -151,12 +136,8 @@ Pull requests welcome. If you want to add:
 
 Open an issue or fork away.
 
----
-
 ## License
 
 MIT — use freely for research, education, or presentations. Attribution appreciated.
-
----
 
 *Built with original biological reasoning and Claude AI (Anthropic) — demonstrating how AI-assisted scientific visualization can be developed iteratively with domain expertise guiding every structural decision.*

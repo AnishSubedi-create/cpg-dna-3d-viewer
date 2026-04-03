@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Interactive 3D structural comparison of CpG-A G-quadruplex tetramer, CpG-B linear ssDNA, and Adenoviral dsDNA — exploring HMGB1-LLPS and cGAS-STING innate immune signalling. Created by Anish Subedi.">
+<meta name="description" content="Interactive 3D structural comparison of CpG-A G-quadruplex tetramer, CpG-B linear ssDNA, and Adenoviral dsDNA, exploring HMGB1-LLPS and cGAS-STING innate immune signalling. Created by Anish Subedi.">
 <meta name="author" content="Anish Subedi">
 <meta name="keywords" content="CpG DNA, G-quadruplex, HMGB1, LLPS, TLR9, cGAS-STING, RAGE, innate immunity, molecular visualization, adenovirus, ODN2216, ODN2006">
 <meta property="og:title" content="CpG DNA 3D Viewer — Anish Subedi">
@@ -401,7 +401,7 @@
     </div>
     <div class="badge">3D Molecular Visualization · Innate Immunity</div>
     <h1>CpG DNA Structural <em>3D</em> Viewer</h1>
-    <p class="subtitle">Created by Anish Subedi to visualize 3D structures of CpG-A, CpG-B, and Adenoviral dsDNA — comparing how structural topology drives distinct innate immune sensing mechanisms and liquid-liquid phase separation.</p>
+    <p class="subtitle">Created by Anish Subedi to visualize 3D structures of CpG-A, CpG-B, and Adenoviral dsDNA, comparing how structural topology drives distinct innate immune sensing mechanisms and liquid-liquid phase separation.</p>
   </div>
   <div class="header-right">
     <div class="header-tags">
@@ -448,7 +448,7 @@
         A personal project exploring how DNA topology shapes innate immune fate.
       </p>
       <p style="font-family: var(--mono); font-size: 9px; color: var(--muted); margin-top: 8px; opacity: 0.5; letter-spacing: 0.04em;">
-        — Anish Subedi
+        Anish Subedi
       </p>
     </div>
   </nav>
@@ -566,7 +566,7 @@
             <p>Backbone: <span>Full phosphorothioate</span></p>
             <p>Size: <span>24-mer · ~7–8 nm</span></p>
             <p>Sensor: <span>TLR9 (B cells, monocytes)</span></p>
-            <p>HMGB1: <span>Weak — no LLPS; direct TLR9 dominates</span></p>
+            <p>HMGB1: <span>Weak; no LLPS. Direct TLR9 dominates</span></p>
             <p>LLPS type: <span>None</span></p>
             <p>Key output: <span>IL-6, TNF-α, B-cell activation</span></p>
           </div>
@@ -582,9 +582,9 @@
           </div>
         </div>
         <div class="llps-note">
-          <b>LLPS mechanistic comparison:</b> CpG-A drives HMGB1 phase separation via the RAGE/SLP76 axis (PNAS 2025) — the G-quadruplex topology provides multivalent scaffolding unavailable to linear ODNs.
+          <b>LLPS mechanistic comparison:</b> CpG-A drives HMGB1 phase separation via the RAGE/SLP76 axis (PNAS 2025). The G-quadruplex topology provides multivalent scaffolding unavailable to linear ODNs.
           Adenoviral dsDNA triggers a distinct <b>cGAS·DNA LLPS → cGAMP → STING</b> condensate pathway; adenovirus counteracts this using protein VII to physically sequester HMGB1 in chromatin via A-box interaction.
-          CpG-B engages neither condensate pathway — it activates TLR9 through direct 1:1 endosomal engagement, driving NF-κB rather than IRF7/IRF3.
+          CpG-B engages neither condensate pathway. It activates TLR9 through direct 1:1 endosomal engagement, driving NF-κB rather than IRF7/IRF3.
         </div>
         <div class="compare-canvas-wrap">
           <canvas id="c3"></canvas>
@@ -663,8 +663,7 @@
   function gCpgA(){
     const o=[];
     const R=55,SA=[Math.PI/4,3*Math.PI/4,5*Math.PI/4,7*Math.PI/4];
-    for(let s=0;s<4;s++){
-      const a0=SA[s];
+    for(let s=0;s<4;s++){const a0=SA[s];
       const mkT=(y0,y1,n,col)=>{const p=[];for(let i=0;i<=n;i++){const t=i/n;const y=y0+(y1-y0)*t;const tw=t*Math.PI*2.5+a0;const r=R+5*Math.sin(t*Math.PI);p.push([r*Math.cos(tw),y,r*Math.sin(tw)]);}return{type:'tube',pts:p,col,w:4.5};};
       o.push(mkT(210,80,10,'#f59e0b'));
       o.push(mkT(80,-80,14,'#3b82f6'));
@@ -694,7 +693,7 @@
     for(let i=0;i<=N;i++){const y=i*RISE-N*RISE/2,a=i*TW;o.push({type:'sph',p:[(R+3)*Math.cos(a),y,(R+3)*Math.sin(a)],r:3,col:'#60a5fa'});o.push({type:'sph',p:[(R+3)*Math.cos(a+Math.PI),y,(R+3)*Math.sin(a+Math.PI)],r:3,col:'#f87171'});}
     for(let i=0;i<N;i++){const y=(i+0.5)*RISE-N*RISE/2,a=(i+0.5)*TW;o.push({type:'stick',p1:[(R+3)*Math.cos(a),y,(R+3)*Math.sin(a)],p2:[(R+3)*Math.cos(a+Math.PI),y,(R+3)*Math.sin(a+Math.PI)],col:'rgba(16,185,129,0.45)',w:2.5});}
     for(let i=2;i<N;i+=5){const y=i*RISE-N*RISE/2,a=i*TW;for(let k=0;k<3;k++){const aa=a+k*TW;o.push({type:'sph',p:[(R+22)*Math.cos(aa),y,(R+22)*Math.sin(aa)],r:2.5,col:'rgba(245,158,11,0.35)'});}}
-    for(let i=4;i<N;i+=5){const y=i*RISE-N*RISE/2,a=i*TW+Math.PI;o.push({type:'sph',p:[(R+10)*Math.cos(a),y,(R+10)*Math.sin(a)],r:2,col:'rgba(139,92,246,0.35)'});}
+    for(let i=4;i<N;i+=5){const y=i*RISE-N*RISE/2,a=i*TW+Math.PI;o.push({type:'sph',p:[(R+10)*Math.cos(a),y,(R+10)*Math.sin(a)],r:2,col:'rgba(139,92,246,0.35)'});}}
     return o;
   }
 
@@ -716,7 +715,8 @@
     const dp1=[],dp2=[];for(let i=0;i<=ND;i++){const y=i*RD2-ND*RD2/2;dp1.push([OD+(RD+3)*Math.cos(i*TTW2),y,(RD+3)*Math.sin(i*TTW2)]);dp2.push([OD+(RD+3)*Math.cos(i*TTW2+Math.PI),y,(RD+3)*Math.sin(i*TTW2+Math.PI)]);}
     o.push({type:'tube',pts:dp1,col:'#3b82f6',w:4});o.push({type:'tube',pts:dp2,col:'#ef4444',w:4});
     for(let i=0;i<ND;i++){const y=(i+0.5)*RD2-ND*RD2/2,a=(i+0.5)*TTW2;o.push({type:'stick',p1:[OD+(RD+3)*Math.cos(a),y,(RD+3)*Math.sin(a)],p2:[OD+(RD+3)*Math.cos(a+Math.PI),y,(RD+3)*Math.sin(a+Math.PI)],col:'rgba(16,185,129,0.4)',w:2});}
-    for(let i=0;i<16;i++){const a=i/16*Math.PI*2;o.push({type:'sph',p:[OD+52*Math.cos(a),58*Math.sin(a),0],r:3,col:'rgba(59,130,246,0.2)'});}
+    for(let i=0;i<16;i++){const a=i/16*Math.PI*2;o.push({type:'sph',p:[OD+52*Math.cos(a),58*Math.sin(a),0],r:3,col:'rgba(59,130,246,0.2)'});
+    }
     return o;
   }
 
@@ -776,7 +776,8 @@
     // Compare panel labels
     if(idx===3){
       ctx.font='bold 11px "JetBrains Mono",monospace';ctx.textAlign='center';
-      [[-155,'CpG-A','#9b72d0'],[0,'CpG-B','#d85c5c'],[155,'Adenoviral\ndsDNA','#4a9fd4']].forEach(([bx,label,col])=>{
+      [[-155,'CpG-A','#9b72d0'],[0,'CpG-B','#d85c5c'],[155,'Adenoviral
+dsDNA','#4a9fd4']].forEach(([bx,label,col])=>{
         const[x,y]=pr([bx,-105,0],mat,CX,CY,fov,s.zoom);ctx.fillStyle=col;label.split('\n').forEach((l,i)=>ctx.fillText(l,x,y+i*14));
       });
       ctx.font='9px "JetBrains Mono",monospace';

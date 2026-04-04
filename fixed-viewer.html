@@ -1,0 +1,935 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>CpG DNA & HMGB1 Docking Simulator | Anish Subedi</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500;600&display=swap');
+:root{
+  --bg:#0e1117;--surface:#141920;--surface2:#1a2130;--surface3:#1e2840;
+  --border:rgba(78,161,211,0.12);--border2:rgba(78,161,211,0.22);
+  --text:#c8d8e8;--muted:#5a7a96;--dim:#3a5570;
+  --af-blue:#4ea1d3;--af-teal:#2dd4bf;--af-green:#4ade80;
+  --af-yellow:#facc15;--af-orange:#fb923c;--af-red:#f87171;
+  --af-purple:#a78bfa;--af-pink:#f472b6;
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',sans-serif;
+  --confidence-bar: linear-gradient(90deg,#4ea1d3,#2dd4bf,#4ade80,#facc15,#f87171);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);height:100vh;overflow:hidden;font-size:13px}
+
+/* TOP BAR */
+.topbar{height:44px;background:var(--surface);border-bottom:1px solid var(--border2);display:flex;align-items:center;padding:0 16px;gap:12px;flex-shrink:0}
+.topbar-logo{display:flex;align-items:center;gap:8px}
+.logo-mark{width:26px;height:26px;border-radius:4px;background:linear-gradient(135deg,#4ea1d3,#2dd4bf);display:flex;align-items:center;justify-content:center}
+.logo-mark svg{width:14px;height:14px;fill:none;stroke:#0e1117;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.topbar-name{font-family:var(--mono);font-size:12px;font-weight:600;color:#e8f4ff;letter-spacing:0.06em}
+.topbar-sep{width:1px;height:20px;background:var(--border2)}
+.topbar-title{font-family:var(--sans);font-size:12px;color:var(--muted);font-weight:300}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px}
+.tag-pill{font-family:var(--mono);font-size:9px;letter-spacing:0.08em;padding:2px 8px;border-radius:3px;border:1px solid var(--border2);color:var(--af-teal);background:rgba(45,212,191,0.06);text-transform:uppercase}
+
+/* LAYOUT */
+.shell{display:flex;height:calc(100vh - 44px)}
+.left-panel{width:180px;flex-shrink:0;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--dim) transparent}
+.left-section{padding:8px 0}
+.left-label{font-family:var(--mono);font-size:8px;letter-spacing:0.14em;text-transform:uppercase;color:var(--dim);padding:4px 12px 2px}
+.nav-item{display:block;width:100%;background:none;border:none;border-left:2px solid transparent;padding:5px 12px;text-align:left;cursor:pointer;transition:all 0.12s}
+.nav-item:hover{background:var(--surface2)}
+.nav-item.active{border-left-color:var(--af-blue);background:rgba(78,161,211,0.07)}
+.nav-item .ni-name{display:block;font-family:var(--mono);font-size:11px;font-weight:500;color:var(--text)}
+.nav-item.active .ni-name{color:var(--af-blue)}
+.nav-item .ni-sub{display:block;font-size:9px;color:var(--muted);margin-top:1px;font-family:var(--mono)}
+.nav-div{height:1px;background:var(--border);margin:4px 0}
+
+/* MAIN */
+.main{flex:1;display:flex;flex-direction:column;overflow:hidden;min-width:0}
+.viewport{flex:1;position:relative;min-height:0}
+canvas{display:block;width:100%;height:100%;cursor:grab}
+canvas:active{cursor:grabbing}
+
+/* OVERLAY BADGES */
+.vp-label{position:absolute;top:12px;left:12px;pointer-events:none}
+.vp-label .mol-name{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--af-blue);letter-spacing:0.05em}
+.vp-label .mol-sub{font-family:var(--mono);font-size:9px;color:var(--muted);margin-top:2px}
+.vp-hint{position:absolute;bottom:8px;right:12px;font-family:var(--mono);font-size:9px;color:var(--dim);pointer-events:none}
+
+/* CONFIDENCE STRIP (AlphaFold style) */
+.confidence-strip{position:absolute;top:12px;right:12px;width:160px;background:rgba(20,25,32,0.88);border:1px solid var(--border2);border-radius:4px;padding:8px 10px;pointer-events:none;backdrop-filter:blur(4px)}
+.cs-title{font-family:var(--mono);font-size:8px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:6px}
+.cs-bar{height:6px;border-radius:3px;background:var(--confidence-bar);margin-bottom:8px;opacity:0.9}
+.cs-legend{display:grid;grid-template-columns:1fr 1fr;gap:3px 8px}
+.cs-row{display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:8px;color:var(--muted)}
+.cs-dot{width:7px;height:7px;border-radius:2px;flex-shrink:0}
+
+/* DOCKING METRICS PANEL */
+.dock-metrics{position:absolute;top:12px;right:12px;width:170px;background:rgba(20,25,32,0.9);border:1px solid var(--border2);border-radius:4px;padding:8px 10px;pointer-events:none;backdrop-filter:blur(4px);display:none}
+.dm-title{font-family:var(--mono);font-size:8px;letter-spacing:0.1em;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
+.dm-row{display:flex;justify-content:space-between;align-items:center;padding:3px 0;border-bottom:1px solid rgba(78,161,211,0.06)}
+.dm-label{font-family:var(--mono);font-size:8px;color:var(--muted);letter-spacing:0.06em;text-transform:uppercase}
+.dm-val{font-family:var(--mono);font-size:10px;font-weight:600;color:var(--text)}
+.dm-val.good{color:var(--af-green)}
+.dm-val.mid{color:var(--af-yellow)}
+.dm-val.poor{color:var(--af-red)}
+
+/* BOTTOM INFO */
+.bottom{border-top:1px solid var(--border);background:var(--surface);flex-shrink:0;max-height:160px;overflow-y:auto}
+.info-row{display:flex;gap:16px;padding:8px 14px;align-items:flex-start;flex-wrap:wrap}
+.info-body{flex:1;min-width:160px}
+.info-mol{font-family:var(--mono);font-size:11px;font-weight:600;color:var(--af-blue);margin-bottom:4px}
+.info-desc{font-size:11px;color:var(--muted);line-height:1.6}
+.info-desc b{color:var(--text);font-weight:500}
+.info-cite{font-family:var(--mono);font-size:8px;color:var(--dim);margin-top:4px;letter-spacing:0.04em}
+.legend-wrap{display:flex;gap:6px;flex-wrap:wrap;align-items:flex-start;padding-top:2px}
+.li{display:flex;align-items:center;gap:4px;font-family:var(--mono);font-size:9px;color:var(--muted);white-space:nowrap}
+.ld{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+
+/* CONTROLS */
+.ctrl-bar{border-top:1px solid var(--border);background:var(--surface2);padding:4px 12px;display:flex;gap:6px;align-items:center;flex-wrap:wrap;flex-shrink:0}
+.cb{font-family:var(--mono);font-size:9px;padding:3px 9px;border-radius:3px;border:1px solid var(--border2);background:transparent;color:var(--muted);cursor:pointer;letter-spacing:0.06em;text-transform:uppercase;transition:all 0.12s}
+.cb:hover{border-color:var(--af-blue);color:var(--af-blue)}
+.cb.on{border-color:var(--af-blue);color:var(--af-blue);background:rgba(78,161,211,0.1)}
+
+/* DOCKING BAR */
+.dock-bar{border-top:1px solid var(--border2);background:var(--surface);padding:5px 12px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;flex-shrink:0}
+.db-run{font-family:var(--mono);font-size:9px;padding:4px 14px;border-radius:3px;border:1px solid var(--af-teal);background:rgba(45,212,191,0.1);color:var(--af-teal);cursor:pointer;letter-spacing:0.08em;text-transform:uppercase;font-weight:600;transition:all 0.12s}
+.db-run:hover{background:rgba(45,212,191,0.2)}
+.db-run:disabled{opacity:0.3;cursor:default}
+.db-reset{font-family:var(--mono);font-size:9px;padding:4px 10px;border-radius:3px;border:1px solid var(--border);background:transparent;color:var(--muted);cursor:pointer;letter-spacing:0.06em;text-transform:uppercase}
+.db-state{font-family:var(--mono);font-size:9px;color:var(--muted);letter-spacing:0.1em;text-transform:uppercase}
+.db-prog{flex:1;max-width:150px;height:3px;background:var(--dim);border-radius:2px;overflow:hidden}
+.db-fill{height:100%;width:0%;background:linear-gradient(90deg,var(--af-blue),var(--af-teal));border-radius:2px;transition:width 0.08s}
+.db-badge{font-family:var(--mono);font-size:8px;padding:2px 8px;border-radius:3px;font-weight:600;letter-spacing:0.08em;text-transform:uppercase}
+.db-badge.llps{background:rgba(74,222,128,0.12);color:var(--af-green);border:1px solid rgba(74,222,128,0.3)}
+.db-badge.nocomplex{background:rgba(248,113,113,0.12);color:var(--af-red);border:1px solid rgba(248,113,113,0.3)}
+.db-badge.sequestered{background:rgba(167,139,250,0.12);color:var(--af-purple);border:1px solid rgba(167,139,250,0.3)}
+
+/* PARAM BAR */
+.param-bar{border-top:1px solid var(--border);background:var(--surface2);padding:4px 12px;display:flex;gap:12px;align-items:center;flex-wrap:wrap;flex-shrink:0}
+.pg{display:flex;align-items:center;gap:5px}
+.pl{font-family:var(--mono);font-size:8px;color:var(--muted);letter-spacing:0.08em;text-transform:uppercase}
+.ps{font-family:var(--mono);font-size:9px;background:var(--bg);color:var(--text);border:1px solid var(--border2);border-radius:3px;padding:2px 6px;cursor:pointer;outline:none}
+.ps:focus{border-color:var(--af-blue)}
+
+/* COMPARE PANEL */
+.cmp-panel{flex:1;overflow-y:auto;padding:12px 14px;display:none}
+.cmp-panel.show{display:block}
+.cmp-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-bottom:10px}
+.cc{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:10px}
+.cc h4{font-family:var(--mono);font-size:11px;font-weight:600;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+.cc p{font-family:var(--sans);font-size:10px;color:var(--muted);margin:2px 0;line-height:1.4}
+.cc span{color:var(--text);font-weight:500}
+.insight-box{background:rgba(78,161,211,0.05);border:1px solid rgba(78,161,211,0.15);border-left:3px solid var(--af-blue);border-radius:0 4px 4px 0;padding:8px 12px;font-size:11px;color:var(--muted);line-height:1.65;margin-top:8px}
+.insight-box b{color:var(--text);font-weight:500}
+.cmp-canvas-wrap{height:200px;position:relative;border:1px solid var(--border);border-radius:4px;overflow:hidden;margin-top:8px}
+
+/* PANEL VISIBILITY */
+.panel{display:none;flex-direction:column;flex:1;min-height:0}
+.panel.show{display:flex}
+
+/* FOOTER */
+.status-bar{height:22px;background:var(--surface);border-top:1px solid var(--border);display:flex;align-items:center;padding:0 14px;gap:16px;flex-shrink:0}
+.sb-item{font-family:var(--mono);font-size:9px;color:var(--dim);letter-spacing:0.06em}
+.sb-item b{color:var(--muted);font-weight:500}
+.sb-dot{width:5px;height:5px;border-radius:50%;background:var(--af-green);flex-shrink:0;margin-right:4px;display:inline-block}
+
+@media(max-width:700px){
+  .left-panel{width:42px}
+  .ni-sub,.ni-name{font-size:7px}
+  .topbar-title,.tag-pill{display:none}
+  .confidence-strip,.dock-metrics{width:130px}
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-logo">
+    <div class="logo-mark">
+      <svg viewBox="0 0 14 14"><path d="M7 1.5v11M1.5 7h11M3.5 3.5l7 7M10.5 3.5l-7 7"/></svg>
+    </div>
+    <span class="topbar-name">Anish Subedi</span>
+  </div>
+  <div class="topbar-sep"></div>
+  <span class="topbar-title">CpG DNA &amp; HMGB1 Docking Simulator</span>
+  <div class="topbar-right">
+    <span class="tag-pill">Innate Immunity</span>
+    <span class="tag-pill">LLPS</span>
+    <span class="tag-pill">3D Docking</span>
+  </div>
+</div>
+
+<div class="shell">
+
+  <nav class="left-panel">
+    <div class="left-section">
+      <div class="left-label">DNA Ligands</div>
+      <button class="nav-item active" onclick="go(0)"><span class="ni-name">CpG-A</span><span class="ni-sub">ODN2216 / G-quad</span></button>
+      <button class="nav-item" onclick="go(1)"><span class="ni-name">CpG-B</span><span class="ni-sub">ODN2006 / linear</span></button>
+      <button class="nav-item" onclick="go(2)"><span class="ni-name">Ad5 DNA</span><span class="ni-sub">B-form / pVII coat</span></button>
+      <button class="nav-item" onclick="go(3)"><span class="ni-name">Ad37 DNA</span><span class="ni-sub">B-form / GD1a tropic</span></button>
+    </div>
+    <div class="nav-div"></div>
+    <div class="left-section">
+      <div class="left-label">Proteins</div>
+      <button class="nav-item" onclick="go(4)"><span class="ni-name">HMGB1</span><span class="ni-sub">Box A+B / acidic tail</span></button>
+    </div>
+    <div class="nav-div"></div>
+    <div class="left-section">
+      <div class="left-label">Receptors</div>
+      <button class="nav-item" onclick="go(5)"><span class="ni-name">RAGE</span><span class="ni-sub">V-C1-C2 / dimer</span></button>
+      <button class="nav-item" onclick="go(6)"><span class="ni-name">TLR9</span><span class="ni-sub">LRR / CpG sensor</span></button>
+    </div>
+    <div class="nav-div"></div>
+    <div class="left-section">
+      <div class="left-label">Docking</div>
+      <button class="nav-item" onclick="go(7)"><span class="ni-name">HMGB1 + CpG-A</span><span class="ni-sub">Ternary LLPS</span></button>
+      <button class="nav-item" onclick="go(8)"><span class="ni-name">HMGB1 + CpG-B</span><span class="ni-sub">Failed docking</span></button>
+      <button class="nav-item" onclick="go(9)"><span class="ni-name">HMGB1 + Ad5</span><span class="ni-sub">pVII sequestration</span></button>
+      <button class="nav-item" onclick="go(10)"><span class="ni-name">HMGB1 + Ad37</span><span class="ni-sub">pVII sequestration</span></button>
+    </div>
+    <div class="nav-div"></div>
+    <div class="left-section">
+      <div class="left-label">Summary</div>
+      <button class="nav-item" onclick="go(11)"><span class="ni-name">Compare All</span><span class="ni-sub">Pathways / fates</span></button>
+    </div>
+  </nav>
+
+  <div class="main" id="main">
+
+    <!-- Static structure panels 0-6 -->
+    <div class="panel show" id="p0">
+      <div class="viewport"><canvas id="c0"></canvas>
+        <div class="vp-label"><div class="mol-name">CpG-A / ODN2216</div><div class="mol-sub">G-quadruplex tetramer · 20-mer · K+ channel</div></div>
+        <div class="vp-hint">drag · scroll to zoom</div>
+        <div class="confidence-strip" id="cs0">
+          <div class="cs-title">Structure confidence</div>
+          <div class="cs-bar"></div>
+          <div class="cs-legend">
+            <div class="cs-row"><div class="cs-dot" style="background:#4ea1d3"></div>G-quad (high)</div>
+            <div class="cs-row"><div class="cs-dot" style="background:#2dd4bf"></div>PS stem (high)</div>
+            <div class="cs-row"><div class="cs-dot" style="background:#facc15"></div>PO linker (med)</div>
+            <div class="cs-row"><div class="cs-dot" style="background:#f87171"></div>Tail (low)</div>
+          </div>
+        </div>
+      </div>
+      <div class="ctrl-bar">
+        <button class="cb on" id="btn0" onclick="toggleAuto(0)">Auto-rotate</button>
+        <button class="cb" onclick="resetView(0)">Reset</button>
+      </div>
+      <div class="bottom"><div class="info-row">
+        <div class="info-body">
+          <div class="info-mol">CpG-A (ODN2216) · 20-mer</div>
+          <div class="info-desc">5'-gg<b>GGGACGATCGTC</b>gggggg-3' · Mixed PS/PO backbone. Four strands tetramerize via poly-G G-quadruplex caps (parallel topology, K+ stabilized at ~2.8 A from O6, PDB 1KF1). Palindromic PO center forms duplex stems. Forms ~100-200 nm globular aggregates. Binds HMGB1 to nucleate <b>LLPS condensates</b>, activating RAGE, SLP76, and inflammasome assembly driving IFN-alpha/beta in pDCs.</div>
+          <div class="info-cite">Verthelyi et al., J Immunol 2001 · Parkinson et al., Nature 2002 (1KF1) · PNAS 2025</div>
+        </div>
+        <div class="legend-wrap">
+          <div class="li"><div class="ld" style="background:#facc15"></div>poly-G (PS)</div>
+          <div class="li"><div class="ld" style="background:#4ea1d3"></div>palindrome (PO)</div>
+          <div class="li"><div class="ld" style="background:#a78bfa"></div>G-tetrad</div>
+          <div class="li"><div class="ld" style="background:#f87171"></div>K+</div>
+          <div class="li"><div class="ld" style="background:#4ade80"></div>CpG motif</div>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="panel" id="p1">
+      <div class="viewport"><canvas id="c1"></canvas>
+        <div class="vp-label"><div class="mol-name">CpG-B / ODN2006</div><div class="mol-sub">Full PS linear ssDNA · 24-mer</div></div>
+        <div class="vp-hint">drag · scroll to zoom</div>
+        <div class="confidence-strip"><div class="cs-title">Structure confidence</div><div class="cs-bar"></div><div class="cs-legend"><div class="cs-row"><div class="cs-dot" style="background:#4ea1d3"></div>PS backbone (high)</div><div class="cs-row"><div class="cs-dot" style="background:#2dd4bf"></div>CpG motifs (high)</div><div class="cs-row"><div class="cs-dot" style="background:#facc15"></div>termini (med)</div><div class="cs-row"><div class="cs-dot" style="background:#f87171"></div>flex regions (low)</div></div></div>
+      </div>
+      <div class="ctrl-bar"><button class="cb on" id="btn1" onclick="toggleAuto(1)">Auto-rotate</button><button class="cb" onclick="resetView(1)">Reset</button></div>
+      <div class="bottom"><div class="info-row"><div class="info-body">
+        <div class="info-mol">CpG-B (ODN2006) · 24-mer</div>
+        <div class="info-desc">5'-tcg<b>cgt</b>ttt<b>gtcg</b>tttt<b>gtcg</b>tt-3' · Full PS backbone. No poly-G ends; no G-quadruplex. Flexible linear ssDNA (~7-8 nm). Three GTCGTT CpG motifs engage TLR9 directly (1:1). Strong <b>NF-kB / B-cell activator</b>. Weak IFN-alpha. Does not trigger HMGB1-LLPS.</div>
+        <div class="info-cite">Hartmann & Krieg, J Immunol 2000 · Vollmer et al., Eur J Immunol 2004</div>
+      </div><div class="legend-wrap">
+        <div class="li"><div class="ld" style="background:#f87171"></div>PS backbone</div>
+        <div class="li"><div class="ld" style="background:#fb923c"></div>PS sulfur</div>
+        <div class="li"><div class="ld" style="background:#4ade80"></div>CpG motif</div>
+        <div class="li"><div class="ld" style="background:#a78bfa"></div>bases</div>
+      </div></div></div>
+    </div>
+
+    <div class="panel" id="p2">
+      <div class="viewport"><canvas id="c2"></canvas>
+        <div class="vp-label"><div class="mol-name">Ad5 dsDNA</div><div class="mol-sub">B-form double helix · pVII coat · ITRs at termini</div></div>
+        <div class="vp-hint">drag · scroll to zoom</div>
+        <div class="confidence-strip"><div class="cs-title">Structure confidence</div><div class="cs-bar"></div><div class="cs-legend"><div class="cs-row"><div class="cs-dot" style="background:#4ea1d3"></div>B-form helix (high)</div><div class="cs-row"><div class="cs-dot" style="background:#2dd4bf"></div>pVII contacts (high)</div><div class="cs-row"><div class="cs-dot" style="background:#facc15"></div>ITR junctions (med)</div><div class="cs-row"><div class="cs-dot" style="background:#f87171"></div>tail regions (low)</div></div></div>
+      </div>
+      <div class="ctrl-bar"><button class="cb on" id="btn2" onclick="toggleAuto(2)">Auto-rotate</button><button class="cb" onclick="resetView(2)">Reset</button></div>
+      <div class="bottom"><div class="info-row"><div class="info-body">
+        <div class="info-mol">Ad5 dsDNA · ~36 kbp genome (50 bp segment shown)</div>
+        <div class="info-desc">B-form dsDNA, 10.5 bp/turn, PO backbone. <b>Protein VII (pVII)</b>: 174 aa arginine-rich histone-like protein coating genome at ~1 pVII/20 bp. Compacts viral DNA and sequesters HMGB1 via A-box contact, suppressing IFN-beta. ITRs (~103 bp, AT-rich) at termini. Cytosolic dsDNA escaping post-lysis drives <b>cGAS-STING activation</b>.</div>
+        <div class="info-cite">Haruki et al., J Virol 2006 · Avgousti et al., Nature 2016</div>
+      </div><div class="legend-wrap">
+        <div class="li"><div class="ld" style="background:#4ea1d3"></div>strand 1</div>
+        <div class="li"><div class="ld" style="background:#f87171"></div>strand 2</div>
+        <div class="li"><div class="ld" style="background:#2dd4bf"></div>ITR region</div>
+        <div class="li"><div class="ld" style="background:#fb923c"></div>pVII (Arg-rich)</div>
+        <div class="li"><div class="ld" style="background:#4ade80"></div>base pair</div>
+      </div></div></div>
+    </div>
+
+    <div class="panel" id="p3">
+      <div class="viewport"><canvas id="c3"></canvas>
+        <div class="vp-label"><div class="mol-name">Ad37 dsDNA</div><div class="mol-sub">B-form double helix · pVII coat · GD1a-tropic fiber</div></div>
+        <div class="vp-hint">drag · scroll to zoom</div>
+        <div class="confidence-strip"><div class="cs-title">Structure confidence</div><div class="cs-bar"></div><div class="cs-legend"><div class="cs-row"><div class="cs-dot" style="background:#4ea1d3"></div>B-form helix (high)</div><div class="cs-row"><div class="cs-dot" style="background:#2dd4bf"></div>pVII contacts (high)</div><div class="cs-row"><div class="cs-dot" style="background:#facc15"></div>ITR junctions (med)</div><div class="cs-row"><div class="cs-dot" style="background:#f87171"></div>tail regions (low)</div></div></div>
+      </div>
+      <div class="ctrl-bar"><button class="cb on" id="btn3" onclick="toggleAuto(3)">Auto-rotate</button><button class="cb" onclick="resetView(3)">Reset</button></div>
+      <div class="bottom"><div class="info-row"><div class="info-body">
+        <div class="info-mol">Ad37 dsDNA · ~36 kbp genome (50 bp segment shown)</div>
+        <div class="info-desc">Same B-form dsDNA as Ad5; pVII conserved across serotypes (identical HMGB1 sequestration mechanism). ITR regions with slightly different GC-content emphasis (magenta tint). Key difference: <b>Ad37 fiber knob binds GD1a ganglioside</b> (corneal epithelium tropism) vs Ad5 binding CAR. Nuclear DNA-pVII-HMGB1 interaction is identical to Ad5.</div>
+        <div class="info-cite">Arnberg et al., J Virol 2000 · Nilsson et al., Nat Med 2011</div>
+      </div><div class="legend-wrap">
+        <div class="li"><div class="ld" style="background:#4ea1d3"></div>strand 1</div>
+        <div class="li"><div class="ld" style="background:#f87171"></div>strand 2</div>
+        <div class="li"><div class="ld" style="background:#f472b6"></div>ITR (GC-rich)</div>
+        <div class="li"><div class="ld" style="background:#fb923c"></div>pVII</div>
+        <div class="li"><div class="ld" style="background:#4ade80"></div>base pair</div>
+      </div></div></div>
+    </div>
+
+    <div class="panel" id="p4">
+      <div class="viewport"><canvas id="c4"></canvas>
+        <div class="vp-label"><div class="mol-name">HMGB1</div><div class="mol-sub">Box A (9-79) + Box B (95-163) · acidic tail (186-215) · PDB 2YRQ</div></div>
+        <div class="vp-hint">drag · scroll to zoom</div>
+        <div class="confidence-strip"><div class="cs-title">pLDDT confidence</div><div class="cs-bar"></div><div class="cs-legend"><div class="cs-row"><div class="cs-dot" style="background:#4ea1d3"></div>Box A helices (high)</div><div class="cs-row"><div class="cs-dot" style="background:#2dd4bf"></div>Box B helices (high)</div><div class="cs-row"><div class="cs-dot" style="background:#facc15"></div>linker (med)</div><div class="cs-row"><div class="cs-dot" style="background:#f87171"></div>acidic tail (low)</div></div></div>
+      </div>
+      <div class="ctrl-bar"><button class="cb on" id="btn4" onclick="toggleAuto(4)">Auto-rotate</button><button class="cb" onclick="resetView(4)">Reset</button></div>
+      <div class="bottom"><div class="info-row"><div class="info-body">
+        <div class="info-mol">HMGB1 · 215 aa · ~25 kDa · PDB 2YRQ, 1AAB, 1CKT</div>
+        <div class="info-desc"><b>Box A</b> (res 9-79): L-shaped 3-helix bundle, intercalating Phe37/Ile43, binds DNA minor groove. <b>Box B</b> (res 95-163): L-shaped 3-helix bundle, Phe102/Thr107, principal RAGE-binding domain (Lys96/Arg97 contact RAGE V-domain). <b>Acidic tail</b> (186-215): 30 Asp/Glu, intrinsically disordered. Cys23, Cys45, Cys106 redox: reduced binds RAGE; Cys106 disulfide activates TLR4.</div>
+        <div class="info-cite">Stott et al., J Mol Biol 2010 (2YRQ) · Yang et al., PNAS 2012 · Venereau et al., JEM 2012</div>
+      </div><div class="legend-wrap">
+        <div class="li"><div class="ld" style="background:#4ea1d3"></div>Box A (9-79)</div>
+        <div class="li"><div class="ld" style="background:#fb923c"></div>Box B (95-163)</div>
+        <div class="li"><div class="ld" style="background:#5a7a96"></div>linker</div>
+        <div class="li"><div class="ld" style="background:#f87171"></div>acidic tail</div>
+        <div class="li"><div class="ld" style="background:#4ade80"></div>Cys23/45/106</div>
+        <div class="li"><div class="ld" style="background:#facc15"></div>intercalating</div>
+      </div></div></div>
+    </div>
+
+    <div class="panel" id="p5">
+      <div class="viewport"><canvas id="c5"></canvas>
+        <div class="vp-label"><div class="mol-name">RAGE</div><div class="mol-sub">V-C1-C2 immunoglobulin homodimer · PDB 4LP5</div></div>
+        <div class="vp-hint">drag · scroll to zoom</div>
+        <div class="confidence-strip"><div class="cs-title">pLDDT confidence</div><div class="cs-bar"></div><div class="cs-legend"><div class="cs-row"><div class="cs-dot" style="background:#4ea1d3"></div>V-domain (high)</div><div class="cs-row"><div class="cs-dot" style="background:#2dd4bf"></div>C1 domain (high)</div><div class="cs-row"><div class="cs-dot" style="background:#facc15"></div>C2 domain (med)</div><div class="cs-row"><div class="cs-dot" style="background:#f87171"></div>TM helix (low)</div></div></div>
+      </div>
+      <div class="ctrl-bar"><button class="cb on" id="btn5" onclick="toggleAuto(5)">Auto-rotate</button><button class="cb" onclick="resetView(5)">Reset</button></div>
+      <div class="bottom"><div class="info-row"><div class="info-body">
+        <div class="info-mol">RAGE (AGER) · 35 kDa · PDB 4LP5, 3O3U</div>
+        <div class="info-desc"><b>V-domain</b> (23-116): 8-stranded beta-sandwich, Cys38-Cys99 disulfide, positively charged groove (Lys43, Lys44, Arg104). <b>C1-domain</b> (124-221). <b>C2-domain</b> (227-317). Zn2+ at C1-C1 dimer interface. Constitutive homodimer recruited into LLPS droplets by HMGB1-CpG-A. Signals via DIAPH1 to NF-kB and IRF7.</div>
+        <div class="info-cite">Koch et al., Structure 2010 (3O3U) · Yatime & Bhatt, Acta Cryst D 2013 (4LP5) · PNAS 2025</div>
+      </div><div class="legend-wrap">
+        <div class="li"><div class="ld" style="background:#fb923c"></div>V-domain</div>
+        <div class="li"><div class="ld" style="background:#4ea1d3"></div>C1-domain</div>
+        <div class="li"><div class="ld" style="background:#a78bfa"></div>C2-domain</div>
+        <div class="li"><div class="ld" style="background:#f87171"></div>Zn2+</div>
+        <div class="li"><div class="ld" style="background:#4ade80"></div>TM helix</div>
+      </div></div></div>
+    </div>
+
+    <div class="panel" id="p6">
+      <div class="viewport"><canvas id="c6"></canvas>
+        <div class="vp-label"><div class="mol-name">TLR9</div><div class="mol-sub">CpG-activated 2:2 dimer · ~26-repeat LRR · PDB 3WPC</div></div>
+        <div class="vp-hint">drag · scroll to zoom</div>
+        <div class="confidence-strip"><div class="cs-title">pLDDT confidence</div><div class="cs-bar"></div><div class="cs-legend"><div class="cs-row"><div class="cs-dot" style="background:#4ea1d3"></div>LRR core (high)</div><div class="cs-row"><div class="cs-dot" style="background:#2dd4bf"></div>CpG contacts (high)</div><div class="cs-row"><div class="cs-dot" style="background:#facc15"></div>Z-loop (med)</div><div class="cs-row"><div class="cs-dot" style="background:#f87171"></div>TIR domain (low)</div></div></div>
+      </div>
+      <div class="ctrl-bar"><button class="cb on" id="btn6" onclick="toggleAuto(6)">Auto-rotate</button><button class="cb" onclick="resetView(6)">Reset</button></div>
+      <div class="bottom"><div class="info-row"><div class="info-body">
+        <div class="info-mol">TLR9 · CpG-DNA activated dimer · PDB 3WPC</div>
+        <div class="info-desc">Symmetric 2:2 complex. ~26-repeat LRR with Z-loop insertion (LRR 14-15). Cross-protomer recognition: <b>N-terminal fragment</b> (LRRNT-LRR10, protomer A) and <b>C-terminal fragment</b> (LRR20-22, protomer B) contact each CpG-DNA. Two CpG-ODNs spaced ~7 nm. Dimerization juxtaposes TIR domains, recruiting MyD88 and driving IRF7-dependent IFN-alpha/beta.</div>
+        <div class="info-cite">Ohto et al., Nature 2015 (3WPC)</div>
+      </div><div class="legend-wrap">
+        <div class="li"><div class="ld" style="background:#4ea1d3"></div>protomer A</div>
+        <div class="li"><div class="ld" style="background:#fb923c"></div>protomer B</div>
+        <div class="li"><div class="ld" style="background:#4ade80"></div>CpG-DNA A</div>
+        <div class="li"><div class="ld" style="background:#f87171"></div>CpG-DNA B</div>
+        <div class="li"><div class="ld" style="background:#a78bfa"></div>Z-loop</div>
+      </div></div></div>
+    </div>
+
+    <!-- Docking panels 7-10 -->
+    <div class="panel" id="p7">
+      <div class="viewport"><canvas id="c7"></canvas>
+        <div class="vp-label"><div class="mol-name">Docking: HMGB1 + CpG-A to RAGE</div><div class="mol-sub">Ternary LLPS condensate formation</div></div>
+        <div class="vp-hint">drag · scroll to zoom</div>
+        <div class="dock-metrics" id="dm7">
+          <div class="dm-title">Docking metrics</div>
+          <div class="dm-row"><span class="dm-label">Electrostatic</span><span class="dm-val" id="dme7">--</span></div>
+          <div class="dm-row"><span class="dm-label">Shape (Sc)</span><span class="dm-val" id="dms7">--</span></div>
+          <div class="dm-row"><span class="dm-label">BSA (A2)</span><span class="dm-val" id="dmb7">--</span></div>
+          <div class="dm-row"><span class="dm-label">Est. Kd</span><span class="dm-val" id="dmk7">--</span></div>
+          <div class="dm-row"><span class="dm-label">LLPS score</span><span class="dm-val" id="dml7">--</span></div>
+        </div>
+      </div>
+      <div class="dock-bar" id="db7">
+        <button class="db-run" id="dr7" onclick="runDock(7)">Run docking</button>
+        <button class="db-reset" onclick="resetDock(7)">Reset</button>
+        <span class="db-state" id="dst7">Undocked</span>
+        <div class="db-prog"><div class="db-fill" id="df7"></div></div>
+        <span id="dbg7"></span>
+      </div>
+      <div class="param-bar">
+        <div class="pg"><span class="pl">NaCl</span><select class="ps" id="salt7"><option value="50">50 mM</option><option value="150" selected>150 mM</option><option value="300">300 mM</option></select></div>
+        <div class="pg"><span class="pl">Temp</span><select class="ps" id="temp7"><option value="4">4 C</option><option value="25">25 C</option><option value="37" selected>37 C</option></select></div>
+        <div class="pg"><span class="pl">Redox</span><select class="ps" id="redox7" onchange="updateP(7)"><option value="reduced" selected>Reduced</option><option value="partial">Partially oxidized</option><option value="oxidized">Fully oxidized</option></select></div>
+      </div>
+      <div class="ctrl-bar"><button class="cb on" id="btn7" onclick="toggleAuto(7)">Auto-rotate</button><button class="cb" onclick="resetView(7)">Reset</button></div>
+      <div class="bottom"><div class="info-row"><div class="info-body">
+        <div class="info-mol">HMGB1 + CpG-A to RAGE: ternary LLPS complex</div>
+        <div class="info-desc">HMGB1 Box B intercalates into CpG-A duplex stem (Phe102, Lys96, Arg97 contact phosphates pos 7-13). G-quadruplex caps scaffold multiple HMGB1, enabling <b>multivalent LLPS</b>. HMGB1-CpG-A complex binds RAGE V-domain (Lys43/Lys44/Arg104 contact Glu114/Asp117). BSA ~1,200 A2. Kd ~50-200 nM. Reduced HMGB1 required for RAGE binding.</div>
+        <div class="info-cite">PNAS 2025 · Yang et al., J Exp Med 2012</div>
+      </div></div></div>
+    </div>
+
+    <div class="panel" id="p8">
+      <div class="viewport"><canvas id="c8"></canvas>
+        <div class="vp-label"><div class="mol-name">Docking: HMGB1 + CpG-B</div><div class="mol-sub">Weak interaction: no stable complex formed</div></div>
+        <div class="vp-hint">drag · scroll to zoom</div>
+        <div class="dock-metrics" id="dm8">
+          <div class="dm-title">Docking metrics</div>
+          <div class="dm-row"><span class="dm-label">Electrostatic</span><span class="dm-val" id="dme8">--</span></div>
+          <div class="dm-row"><span class="dm-label">Shape (Sc)</span><span class="dm-val" id="dms8">--</span></div>
+          <div class="dm-row"><span class="dm-label">BSA (A2)</span><span class="dm-val" id="dmb8">--</span></div>
+          <div class="dm-row"><span class="dm-label">Est. Kd</span><span class="dm-val" id="dmk8">--</span></div>
+          <div class="dm-row"><span class="dm-label">LLPS score</span><span class="dm-val" id="dml8">--</span></div>
+        </div>
+      </div>
+      <div class="dock-bar" id="db8">
+        <button class="db-run" id="dr8" onclick="runDock(8)">Run docking</button>
+        <button class="db-reset" onclick="resetDock(8)">Reset</button>
+        <span class="db-state" id="dst8">Undocked</span>
+        <div class="db-prog"><div class="db-fill" id="df8"></div></div>
+        <span id="dbg8"></span>
+      </div>
+      <div class="ctrl-bar"><button class="cb on" id="btn8" onclick="toggleAuto(8)">Auto-rotate</button><button class="cb" onclick="resetView(8)">Reset</button></div>
+      <div class="bottom"><div class="info-row"><div class="info-body">
+        <div class="info-mol">HMGB1 + CpG-B: weak / no stable complex</div>
+        <div class="info-desc">Full PS backbone reduces electrostatic complementarity with HMGB1 DNA-binding surface. Kd greater than 1 uM. No multivalent scaffold (linear ssDNA, single contact). LLPS cannot nucleate. CpG-B activates TLR9 directly via 1:1 endosomal binding without HMGB1 chaperone.</div>
+        <div class="info-cite">Yanai et al., Nature 2009 · PNAS 2025 (negative control)</div>
+      </div></div></div>
+    </div>
+
+    <div class="panel" id="p9">
+      <div class="viewport"><canvas id="c9"></canvas>
+        <div class="vp-label"><div class="mol-name">Docking: HMGB1 + Ad5 DNA</div><div class="mol-sub">pVII sequestration: A-box minor groove + pVII ternary</div></div>
+        <div class="vp-hint">drag · scroll to zoom</div>
+        <div class="dock-metrics" id="dm9">
+          <div class="dm-title">Docking metrics</div>
+          <div class="dm-row"><span class="dm-label">Electrostatic</span><span class="dm-val" id="dme9">--</span></div>
+          <div class="dm-row"><span class="dm-label">Shape (Sc)</span><span class="dm-val" id="dms9">--</span></div>
+          <div class="dm-row"><span class="dm-label">BSA (A2)</span><span class="dm-val" id="dmb9">--</span></div>
+          <div class="dm-row"><span class="dm-label">Est. Kd</span><span class="dm-val" id="dmk9">--</span></div>
+          <div class="dm-row"><span class="dm-label">LLPS score</span><span class="dm-val" id="dml9">--</span></div>
+        </div>
+      </div>
+      <div class="dock-bar" id="db9">
+        <button class="db-run" id="dr9" onclick="runDock(9)">Run docking</button>
+        <button class="db-reset" onclick="resetDock(9)">Reset</button>
+        <span class="db-state" id="dst9">Undocked</span>
+        <div class="db-prog"><div class="db-fill" id="df9"></div></div>
+        <span id="dbg9"></span>
+      </div>
+      <div class="ctrl-bar"><button class="cb on" id="btn9" onclick="toggleAuto(9)">Auto-rotate</button><button class="cb" onclick="resetView(9)">Reset</button></div>
+      <div class="bottom"><div class="info-row"><div class="info-body">
+        <div class="info-mol">HMGB1 + Ad5 DNA: pVII sequestration complex</div>
+        <div class="info-desc">HMGB1 A-box inserts into minor groove adjacent to pVII (major groove). Ternary complex: pVII + HMGB1 A-box + dsDNA. Sequesters HMGB1 in nucleus, blocking cytoplasmic alarmin function and IFN-beta production. pVII stoichiometry: ~1 per 20 bp. <b>Ad5 fiber binds CAR receptor</b> for cell entry.</div>
+        <div class="info-cite">Haruki et al., J Virol 2006 · Avgousti et al., Nature 2016</div>
+      </div></div></div>
+    </div>
+
+    <div class="panel" id="p10">
+      <div class="viewport"><canvas id="c10"></canvas>
+        <div class="vp-label"><div class="mol-name">Docking: HMGB1 + Ad37 DNA</div><div class="mol-sub">pVII sequestration: GD1a ganglioside tropism</div></div>
+        <div class="vp-hint">drag · scroll to zoom</div>
+        <div class="dock-metrics" id="dm10">
+          <div class="dm-title">Docking metrics</div>
+          <div class="dm-row"><span class="dm-label">Electrostatic</span><span class="dm-val" id="dme10">--</span></div>
+          <div class="dm-row"><span class="dm-label">Shape (Sc)</span><span class="dm-val" id="dms10">--</span></div>
+          <div class="dm-row"><span class="dm-label">BSA (A2)</span><span class="dm-val" id="dmb10">--</span></div>
+          <div class="dm-row"><span class="dm-label">Est. Kd</span><span class="dm-val" id="dmk10">--</span></div>
+          <div class="dm-row"><span class="dm-label">LLPS score</span><span class="dm-val" id="dml10">--</span></div>
+        </div>
+      </div>
+      <div class="dock-bar" id="db10">
+        <button class="db-run" id="dr10" onclick="runDock(10)">Run docking</button>
+        <button class="db-reset" onclick="resetDock(10)">Reset</button>
+        <span class="db-state" id="dst10">Undocked</span>
+        <div class="db-prog"><div class="db-fill" id="df10"></div></div>
+        <span id="dbg10"></span>
+      </div>
+      <div class="ctrl-bar"><button class="cb on" id="btn10" onclick="toggleAuto(10)">Auto-rotate</button><button class="cb" onclick="resetView(10)">Reset</button></div>
+      <div class="bottom"><div class="info-row"><div class="info-body">
+        <div class="info-mol">HMGB1 + Ad37 DNA: pVII sequestration (GD1a tropism)</div>
+        <div class="info-desc">Identical docking pose to Ad5: pVII conserved across serotypes. HMGB1 A-box minor groove insertion + pVII major groove binding. Key difference: <b>Ad37 fiber knob binds GD1a ganglioside</b> (not CAR), targeting corneal epithelium. Tropism difference does not affect nuclear DNA-HMGB1 interaction but determines tissue-specific pathogenesis.</div>
+        <div class="info-cite">Arnberg et al., J Virol 2000 · Nilsson et al., Nat Med 2011</div>
+      </div></div></div>
+    </div>
+
+    <!-- Compare panel 11 -->
+    <div class="panel" id="p11">
+      <div class="cmp-panel show">
+        <div class="cmp-grid">
+          <div class="cc"><h4 style="color:#a78bfa">CpG-A + HMGB1</h4>
+            <p>Docking: <span>Box B into duplex stem, Kd ~50-200 nM</span></p>
+            <p>Multivalency: <span>G-quad scaffolds 4+ HMGB1</span></p>
+            <p>LLPS: <span>HMGB1-CpG-A condensates (RAGE axis)</span></p>
+            <p>Output: <span>IFN-alpha/beta, IL-1beta via RAGE/SLP76</span></p>
+          </div>
+          <div class="cc"><h4 style="color:#f87171">CpG-B + HMGB1</h4>
+            <p>Docking: <span>Weak, Kd greater than 1 uM</span></p>
+            <p>Multivalency: <span>None (linear, 1 contact)</span></p>
+            <p>LLPS: <span>None</span></p>
+            <p>Output: <span>NF-kB, B-cell activation via direct TLR9</span></p>
+          </div>
+          <div class="cc"><h4 style="color:#4ea1d3">Ad5 + HMGB1</h4>
+            <p>Docking: <span>A-box minor groove + pVII ternary</span></p>
+            <p>Sequestration: <span>Nuclear, blocks alarmin release</span></p>
+            <p>LLPS: <span>Suppressed (HMGB1 trapped)</span></p>
+            <p>Tropism: <span>CAR receptor (respiratory)</span></p>
+          </div>
+          <div class="cc"><h4 style="color:#f472b6">Ad37 + HMGB1</h4>
+            <p>Docking: <span>Identical to Ad5 (pVII conserved)</span></p>
+            <p>Sequestration: <span>Nuclear, blocks alarmin release</span></p>
+            <p>LLPS: <span>Suppressed (HMGB1 trapped)</span></p>
+            <p>Tropism: <span>GD1a ganglioside (corneal)</span></p>
+          </div>
+          <div class="cc"><h4 style="color:#fb923c">HMGB1 redox states</h4>
+            <p>Reduced: <span>Cys23/45 thiol: RAGE binding</span></p>
+            <p>Partial ox: <span>Cys106 sulfenic: TLR4 shift</span></p>
+            <p>Full ox: <span>Cys23-45 disulfide: TLR4 only</span></p>
+            <p>Implication: <span>Redox switches receptor fate</span></p>
+          </div>
+          <div class="cc"><h4 style="color:#2dd4bf">RAGE V-domain</h4>
+            <p>Ligand: <span>HMGB1 Box B (reduced only)</span></p>
+            <p>Key res: <span>Lys43, Lys44, Arg104</span></p>
+            <p>BSA: <span>~1,200 A2</span></p>
+            <p>LLPS role: <span>Downstream sensor for condensates</span></p>
+          </div>
+        </div>
+        <div class="insight-box">
+          <b>Key insight:</b> CpG-A drives HMGB1 phase separation because its G-quadruplex tetramer provides multivalent scaffolding. Linear CpG-B cannot replicate this. Adenoviral pVII pre-empts HMGB1-mediated innate sensing by sequestering HMGB1 on viral DNA in the nucleus. HMGB1 redox state then determines whether RAGE or TLR4 is engaged downstream.
+        </div>
+        <div class="cmp-canvas-wrap"><canvas id="c11"></canvas></div>
+        <div class="ctrl-bar" style="border:none;padding:4px 0 0">
+          <button class="cb on" id="btn11" onclick="toggleAuto(11)">Auto-rotate</button>
+          <button class="cb" onclick="resetView(11)">Reset</button>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div class="status-bar">
+  <span class="sb-item"><span class="sb-dot"></span>Live</span>
+  <span class="sb-item">Structures grounded in published PDB data</span>
+  <span class="sb-item" style="margin-left:auto">Anish Subedi · Virology and Innate Immunity</span>
+</div>
+
+<script>
+(function(){
+'use strict';
+var N=12,S=[],D=[],DOCK={},active=0;
+for(var k=0;k<N;k++){S.push({rx:.30,ry:.22,auto:true,zoom:1.0});D.push({on:false,lx:0,ly:0});}
+var DP=[7,8,9,10];
+for(var di=0;di<DP.length;di++){var pi=DP[di];DOCK[pi]={state:'undocked',progress:0,t:0,running:false,done:false,salt:150,temp:37,redox:'reduced'};}
+var DD={
+  7:{eb:.82,sb:.65,bb:1200,kd:'50-200 nM',lb:88,res:'llps',rt:'LLPS competent',sf:function(s){return s<=150?1:(s===300?.72:.85);},tf:function(t){return t===37?1:(t===25?.92:.78);},rf:function(r){return r==='reduced'?1:(r==='partial'?.45:.08);}},
+  8:{eb:.22,sb:.31,bb:340,kd:'>1 uM',lb:5,res:'nocomplex',rt:'No complex',sf:function(s){return s<=150?1:(s===300?.55:.78);},tf:function(){return 1;},rf:function(){return 1;}},
+  9:{eb:.74,sb:.62,bb:980,kd:'~100-300 nM',lb:12,res:'sequestered',rt:'Sequestered',sf:function(s){return s<=150?1:(s===300?.68:.82);},tf:function(t){return t===37?1:(t===25?.94:.80);},rf:function(){return 1;}},
+  10:{eb:.74,sb:.62,bb:980,kd:'~100-300 nM',lb:12,res:'sequestered',rt:'Sequestered',sf:function(s){return s<=150?1:(s===300?.68:.82);},tf:function(t){return t===37?1:(t===25?.94:.80);},rf:function(){return 1;}}
+};
+
+function scores(pi){
+  var d=DD[pi],dk=DOCK[pi],p=dk.progress;
+  var sf=d.sf(dk.salt),tf=d.tf(dk.temp),rf=d.rf(dk.redox);
+  var e=+(d.eb*sf*rf*p).toFixed(2);
+  var sc=+(d.sb*p).toFixed(2);
+  var bsa=Math.round(d.bb*p*sf);
+  var llps=Math.round(d.lb*sf*tf*rf);
+  var res=d.res,rt=d.rt;
+  if(pi===7&&dk.redox==='oxidized'){res='nocomplex';rt='RAGE fail / TLR4';llps=4;}
+  else if(pi===7&&dk.redox==='partial'){res='nocomplex';rt='Weak / TLR4 shift';llps=Math.round(llps*.35);}
+  return{e:e,sc:sc,bsa:bsa,kd:d.kd,llps:llps,res:res,rt:rt};
+}
+
+function updMetrics(pi){
+  var sc=scores(pi),p=DOCK[pi].progress;
+  function sv(id,v,cl){var el=document.getElementById(id);if(!el)return;el.textContent=v;el.className='dm-val'+(cl?' '+cl:'');}
+  sv('dme'+pi,p>0?sc.e:'--',sc.e>.6?'good':sc.e>.3?'mid':'poor');
+  sv('dms'+pi,p>0?sc.sc:'--',sc.sc>.5?'good':sc.sc>.25?'mid':'poor');
+  sv('dmb'+pi,p>0?sc.bsa:'--',sc.bsa>800?'good':sc.bsa>400?'mid':'poor');
+  sv('dmk'+pi,p>.8?sc.kd:'--','');
+  sv('dml'+pi,p>0?sc.llps:'--',sc.llps>50?'good':sc.llps>20?'mid':'poor');
+  var badge=document.getElementById('dbg'+pi);
+  if(badge&&DOCK[pi].done){badge.className='db-badge '+sc.res;badge.textContent=sc.rt;}
+}
+
+window.go=function(i){
+  for(var j=0;j<N;j++){var p=document.getElementById('p'+j);if(p)p.className='panel'+(j===i?' show':'');}
+  var btns=document.querySelectorAll('.nav-item');
+  for(var j=0;j<btns.length;j++)btns[j].classList.toggle('active',j===i);
+  active=i;
+  setTimeout(function(){sz(i);},20);
+  if(i>=7&&i<=10){
+    var dm=document.getElementById('dm'+i);
+    if(dm)dm.style.display='block';
+  }
+};
+
+window.toggleAuto=function(i){S[i].auto=!S[i].auto;var b=document.getElementById('btn'+i);if(b)b.classList.toggle('on',S[i].auto);};
+window.resetView=function(i){S[i].rx=.30;S[i].ry=.22;S[i].zoom=1.0;};
+window.updateP=function(pi){var r=document.getElementById('redox'+pi);if(r)DOCK[pi].redox=r.value;if(DOCK[pi].done)updMetrics(pi);};
+
+window.runDock=function(pi){
+  var dk=DOCK[pi];if(dk.running)return;
+  dk.running=true;dk.done=false;dk.state='approaching';dk.progress=0;dk.t=0;
+  var se=document.getElementById('salt'+pi),te=document.getElementById('temp'+pi),re=document.getElementById('redox'+pi);
+  if(se)dk.salt=parseInt(se.value);if(te)dk.temp=parseInt(te.value);if(re)dk.redox=re.value;
+  var dr=document.getElementById('dr'+pi);if(dr)dr.disabled=true;
+  var bg=document.getElementById('dbg'+pi);if(bg){bg.className='';bg.textContent='';}
+  var dm=document.getElementById('dm'+pi);if(dm)dm.style.display='block';
+};
+
+window.resetDock=function(pi){
+  var dk=DOCK[pi];dk.running=false;dk.done=false;dk.state='undocked';dk.progress=0;dk.t=0;
+  var df=document.getElementById('df'+pi);if(df)df.style.width='0%';
+  var dst=document.getElementById('dst'+pi);if(dst)dst.textContent='Undocked';
+  var dr=document.getElementById('dr'+pi);if(dr)dr.disabled=false;
+  var bg=document.getElementById('dbg'+pi);if(bg){bg.className='';bg.textContent='';}
+  updMetrics(pi);
+};
+
+function tickDock(dt){
+  for(var di=0;di<DP.length;di++){
+    var pi=DP[di],dk=DOCK[pi];if(!dk.running)continue;
+    dk.t+=dt;dk.progress=Math.min(1,dk.t/3);
+    if(dk.progress<.4)dk.state='approaching';
+    else if(dk.progress<.85)dk.state='docking';
+    else dk.state='stable';
+    if(pi===8&&dk.progress>.7)dk.state='failed';
+    var labels={approaching:'Approaching',docking:'Aligning',stable:'Docked / stable',failed:'Dissociating'};
+    var dst=document.getElementById('dst'+pi);if(dst)dst.textContent=labels[dk.state]||dk.state;
+    var df=document.getElementById('df'+pi);if(df)df.style.width=Math.round(dk.progress*100)+'%';
+    updMetrics(pi);
+    if(dk.progress>=1){dk.running=false;dk.done=true;var dr=document.getElementById('dr'+pi);if(dr)dr.disabled=false;updMetrics(pi);}
+  }
+}
+
+function sz(idx){
+  var c=document.getElementById('c'+idx);if(!c)return;
+  var dpr=window.devicePixelRatio||1,cw=c.clientWidth,ch=c.clientHeight;
+  if(cw>0&&ch>0){c.width=Math.round(cw*dpr);c.height=Math.round(ch*dpr);}
+}
+
+for(var ii=0;ii<N;ii++){
+  (function(idx){
+    var c=document.getElementById('c'+idx);if(!c)return;
+    var s=S[idx],d=D[idx];
+    c.addEventListener('mousedown',function(e){d.on=true;d.lx=e.clientX;d.ly=e.clientY;});
+    c.addEventListener('mousemove',function(e){if(!d.on)return;s.ry+=(e.clientX-d.lx)*.011;s.rx+=(e.clientY-d.ly)*.011;d.lx=e.clientX;d.ly=e.clientY;});
+    c.addEventListener('mouseup',function(){d.on=false;});
+    c.addEventListener('mouseleave',function(){d.on=false;});
+    c.addEventListener('wheel',function(e){s.zoom=Math.max(.35,Math.min(2.8,s.zoom-e.deltaY*.001));e.preventDefault();},{passive:false});
+    c.addEventListener('touchstart',function(e){d.on=true;d.lx=e.touches[0].clientX;d.ly=e.touches[0].clientY;},{passive:true});
+    c.addEventListener('touchmove',function(e){if(!d.on)return;s.ry+=(e.touches[0].clientX-d.lx)*.013;s.rx+=(e.touches[0].clientY-d.ly)*.013;d.lx=e.touches[0].clientX;d.ly=e.touches[0].clientY;e.preventDefault();},{passive:false});
+    c.addEventListener('touchend',function(){d.on=false;});
+  })(ii);
+}
+
+function mrot(rx,ry){var cx=Math.cos(rx),sx=Math.sin(rx),cy=Math.cos(ry),sy=Math.sin(ry);return[cy,0,sy,sx*sy,cx,-sx*cy,-cx*sy,sx,cx*cy];}
+function proj(p,m,cx,cy,fov,z){var x=m[0]*p[0]+m[1]*p[1]+m[2]*p[2],y=m[3]*p[0]+m[4]*p[1]+m[5]*p[2],zz=m[6]*p[0]+m[7]*p[1]+m[8]*p[2],sc=fov/(fov+zz*z);return[cx+x*z*sc,cy+y*z*sc,zz];}
+
+function gCpgA(){
+  var o=[],R=55,SA=[Math.PI/4,3*Math.PI/4,5*Math.PI/4,7*Math.PI/4];
+  for(var s=0;s<4;s++){
+    var a0=SA[s];
+    var mk=function(y0,y1,n,col,a){var p=[];for(var i=0;i<=n;i++){var t=i/n,y=y0+(y1-y0)*t,tw=t*Math.PI*2.5+a,r=R+5*Math.sin(t*Math.PI);p.push([r*Math.cos(tw),y,r*Math.sin(tw)]);}return{type:'tube',pts:p,col:col,w:4.5};};
+    o.push(mk(210,80,10,'#facc15',a0));o.push(mk(80,-80,14,'#4ea1d3',a0));o.push(mk(-80,-210,8,'#facc15',a0));
+    for(var i=0;i<=22;i++){var t=i/22,y=210-420*t,tw=t*Math.PI*3.8+a0,r=R+5,isc=y>-82&&y<82;o.push({type:'sph',p:[r*Math.cos(tw),y,r*Math.sin(tw)],r:isc?4:3.2,col:isc?'#60c4f5':'#facc15'});}
+  }
+  var TY=[158,130,105,80,-80,-105,-130,-158],TW=[0,.38,.76,1.14,.19,.57,.95,1.33];
+  for(var ti=0;ti<TY.length;ti++){for(var i=0;i<4;i++){var a1=TW[ti]+i*Math.PI/2;o.push({type:'quad',pts:[[24*Math.cos(a1-.2),TY[ti],24*Math.sin(a1-.2)],[50*Math.cos(a1-.3),TY[ti],50*Math.sin(a1-.3)],[50*Math.cos(a1+.3),TY[ti],50*Math.sin(a1+.3)],[24*Math.cos(a1+.2),TY[ti],24*Math.sin(a1+.2)]],col:'rgba(167,139,250,0.22)',stroke:'rgba(167,139,250,0.5)'});o.push({type:'hbond',p1:[36*Math.cos(a1),TY[ti],36*Math.sin(a1)],p2:[36*Math.cos(TW[ti]+(i+1)*Math.PI/2),TY[ti],36*Math.sin(TW[ti]+(i+1)*Math.PI/2)],col:'rgba(167,139,250,0.4)'});}}
+  var ionYs=[-145,-118,-92,0,92,118,145];
+  for(var iy=0;iy<ionYs.length;iy++)o.push({type:'sph',p:[0,ionYs[iy],0],r:7.5,col:'#f87171'});
+  var cpgYs=[-55,-22,22,55];
+  for(var cy=0;cy<cpgYs.length;cy++)for(var si=0;si<2;si++){var sidx=[1,3][si],a=SA[sidx]+.14,r=R+14;o.push({type:'sph',p:[r*Math.cos(a),cpgYs[cy],r*Math.sin(a)],r:5,col:'#4ade80'});}
+  return o;
+}
+
+function gCpgB(){
+  var o=[],Nb=24,RISE=13,TW=Math.PI*2/10.5,R=28,pts=[];
+  for(var i=0;i<=Nb;i++)pts.push([R*Math.cos(i*TW),i*RISE-Nb*RISE/2,R*Math.sin(i*TW)]);
+  o.push({type:'tube',pts:pts,col:'#f87171',w:5});
+  for(var i=0;i<Nb;i++){var y=(i+.5)*RISE-Nb*RISE/2,a=(i+.5)*TW,bR=R+22,isCpg=i===1||i===2||i===9||i===10||i===18||i===19;o.push({type:'sph',p:[R*Math.cos(a),y,R*Math.sin(a)],r:4,col:'#fb923c'});o.push({type:'stick',p1:[R*Math.cos(a),y,R*Math.sin(a)],p2:[bR*Math.cos(a),y,bR*Math.sin(a)],col:'rgba(100,120,150,0.3)',w:2});o.push({type:'sph',p:[bR*Math.cos(a),y,bR*Math.sin(a)],r:isCpg?6.5:4.5,col:isCpg?'#4ade80':'#a78bfa'});}
+  return o;
+}
+
+function gAd5DNA(){
+  var o=[],Nd=50,RISE=7,TW=Math.PI*2/10.5,R=12,p1=[],p2=[];
+  for(var i=0;i<=Nd;i++){var y=i*RISE-Nd*RISE/2,isI=i<6||i>Nd-6;p1.push([(R+3)*Math.cos(i*TW),y,(R+3)*Math.sin(i*TW)]);p2.push([(R+3)*Math.cos(i*TW+Math.PI),y,(R+3)*Math.sin(i*TW+Math.PI)]);}
+  o.push({type:'tube',pts:p1,col:'#4ea1d3',w:5});o.push({type:'tube',pts:p2,col:'#f87171',w:5});
+  for(var i=0;i<=Nd;i++){var y=i*RISE-Nd*RISE/2,a=i*TW,isI=i<6||i>Nd-6;o.push({type:'sph',p:[(R+3)*Math.cos(a),y,(R+3)*Math.sin(a)],r:3,col:isI?'#2dd4bf':'#60c4f5'});o.push({type:'sph',p:[(R+3)*Math.cos(a+Math.PI),y,(R+3)*Math.sin(a+Math.PI)],r:3,col:isI?'#2dd4bf':'#fca5a5'});}
+  for(var i=0;i<Nd;i++){var y=(i+.5)*RISE-Nd*RISE/2,a=(i+.5)*TW;o.push({type:'stick',p1:[(R+3)*Math.cos(a),y,(R+3)*Math.sin(a)],p2:[(R+3)*Math.cos(a+Math.PI),y,(R+3)*Math.sin(a+Math.PI)],col:'rgba(74,222,128,0.35)',w:2});}
+  [10,30,50].forEach(function(idx){if(idx>Nd)return;var y=idx*RISE-Nd*RISE/2,a=idx*TW,px=(R+20)*Math.cos(a),pz=(R+20)*Math.sin(a);o.push({type:'sph',p:[px,y,pz],r:10,col:'rgba(251,146,60,0.45)'});o.push({type:'sph',p:[px,y,pz],r:6,col:'#fb923c'});o.push({type:'stick',p1:[px,y,pz],p2:[(R+5)*Math.cos(a),y,(R+5)*Math.sin(a)],col:'rgba(251,146,60,0.4)',w:3});for(var ri=0;ri<5;ri++){var ra=ri/5*Math.PI*2;o.push({type:'sph',p:[px+8*Math.cos(ra),y+8*Math.sin(ra),pz+4*Math.cos(ra+1)],r:3,col:'rgba(253,186,116,0.5)'});}});
+  o.push({type:'sph',p:[0,-Nd*RISE/2-8,0],r:5,col:'#2dd4bf'});o.push({type:'sph',p:[0,Nd*RISE/2+8,0],r:5,col:'#2dd4bf'});
+  return o;
+}
+
+function gAd37DNA(){
+  var o=[],Nd=50,RISE=7,TW=Math.PI*2/10.5,R=12,p1=[],p2=[];
+  for(var i=0;i<=Nd;i++){var y=i*RISE-Nd*RISE/2;p1.push([(R+3)*Math.cos(i*TW),y,(R+3)*Math.sin(i*TW)]);p2.push([(R+3)*Math.cos(i*TW+Math.PI),y,(R+3)*Math.sin(i*TW+Math.PI)]);}
+  o.push({type:'tube',pts:p1,col:'#4ea1d3',w:5});o.push({type:'tube',pts:p2,col:'#f87171',w:5});
+  for(var i=0;i<=Nd;i++){var y=i*RISE-Nd*RISE/2,a=i*TW,isI=i<6||i>Nd-6;o.push({type:'sph',p:[(R+3)*Math.cos(a),y,(R+3)*Math.sin(a)],r:3,col:isI?'#f472b6':'#60c4f5'});o.push({type:'sph',p:[(R+3)*Math.cos(a+Math.PI),y,(R+3)*Math.sin(a+Math.PI)],r:3,col:isI?'#f472b6':'#fca5a5'});}
+  for(var i=0;i<Nd;i++){var y=(i+.5)*RISE-Nd*RISE/2,a=(i+.5)*TW;o.push({type:'stick',p1:[(R+3)*Math.cos(a),y,(R+3)*Math.sin(a)],p2:[(R+3)*Math.cos(a+Math.PI),y,(R+3)*Math.sin(a+Math.PI)],col:'rgba(74,222,128,0.35)',w:2});}
+  [10,30,50].forEach(function(idx){if(idx>Nd)return;var y=idx*RISE-Nd*RISE/2,a=idx*TW,px=(R+20)*Math.cos(a),pz=(R+20)*Math.sin(a);o.push({type:'sph',p:[px,y,pz],r:10,col:'rgba(251,146,60,0.45)'});o.push({type:'sph',p:[px,y,pz],r:6,col:'#fb923c'});o.push({type:'stick',p1:[px,y,pz],p2:[(R+5)*Math.cos(a),y,(R+5)*Math.sin(a)],col:'rgba(251,146,60,0.4)',w:3});for(var ri=0;ri<5;ri++){var ra=ri/5*Math.PI*2;o.push({type:'sph',p:[px+8*Math.cos(ra),y+8*Math.sin(ra),pz+4*Math.cos(ra+1)],r:3,col:'rgba(244,114,182,0.5)'});}});
+  o.push({type:'sph',p:[0,-Nd*RISE/2-8,0],r:5,col:'#f472b6'});o.push({type:'sph',p:[0,Nd*RISE/2+8,0],r:5,col:'#f472b6'});
+  return o;
+}
+
+function gHMGB1(){
+  var o=[],bax=-40;
+  var mk=function(pts,col,w){return{type:'tube',pts:pts,col:col,w:w};};
+  var h=function(n,y0,y1,ox,col){var p=[];for(var i=0;i<=n;i++){var t=i/n;p.push([ox+8*Math.cos(t*Math.PI*3),y0+(y1-y0)*t,8*Math.sin(t*Math.PI*3)]);}return mk(p,col,7);};
+  o.push(h(12,-60,10,bax,'#4ea1d3'));
+  var h2=[];for(var i=0;i<=10;i++){var t=i/10;h2.push([bax+t*45,10+8*Math.cos(t*Math.PI*2.5),8*Math.sin(t*Math.PI*2.5)]);}o.push(mk(h2,'#4ea1d3',6));
+  var h3=[];for(var i=0;i<=8;i++){var t=i/8;h3.push([bax+15+t*20,-10+t*25,12+6*Math.cos(t*Math.PI*2)]);}o.push(mk(h3,'#4ea1d3',5));
+  o.push({type:'sph',p:[bax+5,-20,10],r:5.5,col:'#facc15'});o.push({type:'sph',p:[bax+12,-8,8],r:5,col:'#facc15'});
+  var lk=[];for(var i=0;i<=8;i++){var t=i/8;lk.push([bax+45+t*30,10+15*Math.sin(t*Math.PI),6*Math.cos(t*Math.PI*1.5)]);}o.push(mk(lk,'#3a5570',3));
+  var bbx=40;
+  o.push(h(12,65,-5,bbx,'#fb923c'));
+  var b2=[];for(var i=0;i<=10;i++){var t=i/10;b2.push([bbx-t*45,-5+8*Math.cos(t*Math.PI*2.5),8*Math.sin(t*Math.PI*2.5)]);}o.push(mk(b2,'#fb923c',6));
+  var b3=[];for(var i=0;i<=8;i++){var t=i/8;b3.push([bbx-15-t*20,15-t*25,12+6*Math.cos(t*Math.PI*2)]);}o.push(mk(b3,'#fb923c',5));
+  o.push({type:'sph',p:[bbx-5,25,10],r:5.5,col:'#facc15'});o.push({type:'sph',p:[bbx-12,15,8],r:5,col:'#facc15'});
+  o.push({type:'sph',p:[bax+18,-35,6],r:4.5,col:'#4ade80'});o.push({type:'sph',p:[bax+28,-10,4],r:4.5,col:'#4ade80'});o.push({type:'sph',p:[bbx-8,5,6],r:4.5,col:'#4ade80'});
+  var tail=[];for(var i=0;i<=20;i++){var t=i/20;tail.push([bbx+10+t*55,-5-12*Math.sin(t*Math.PI*1.5),10*Math.cos(t*Math.PI*2)]);}
+  for(var i=0;i<20;i++){if(i%2===0)o.push({type:'stick',p1:tail[i],p2:tail[i+1],col:'#f87171',w:2.5});o.push({type:'sph',p:tail[i],r:2.5,col:'rgba(248,113,113,0.5)'});}
+  return o;
+}
+
+function gRAGE(){
+  var o=[];
+  function dd(ox,cy,r,col,nS,tw){var h=34;for(var i=0;i<nS;i++){var a=tw+i*(Math.PI*2/nS),pts=[];for(var j=0;j<=8;j++){var t=j/8-.5;pts.push([ox+r*Math.cos(a),cy+h*t,r*Math.sin(a)]);}o.push({type:'tube',pts:pts,col:col,w:3.5});var a2=tw+(i+1)*(Math.PI*2/nS);o.push({type:'stick',p1:[ox+r*Math.cos(a),cy+h*.5,r*Math.sin(a)],p2:[ox+r*Math.cos(a2),cy+h*.5,r*Math.sin(a2)],col:'rgba(78,161,211,0.12)',w:1});o.push({type:'stick',p1:[ox+r*Math.cos(a),cy-h*.5,r*Math.sin(a)],p2:[ox+r*Math.cos(a2),cy-h*.5,r*Math.sin(a2)],col:'rgba(78,161,211,0.12)',w:1});}o.push({type:'sph',p:[ox+r*.6,cy+6,r*.25],r:4,col:'#facc15'});}
+  [-52,52].forEach(function(ox,mi){dd(ox,85,22,'#fb923c',8,mi*Math.PI/8);dd(ox,5,18,'#4ea1d3',7,mi*Math.PI/7+.3);dd(ox,-75,16,'#a78bfa',7,mi*Math.PI/6+.6);o.push({type:'stick',p1:[ox,68,0],p2:[ox,22,0],col:'rgba(78,161,211,0.2)',w:2});o.push({type:'stick',p1:[ox,-12,0],p2:[ox,-58,0],col:'rgba(78,161,211,0.2)',w:2});var tm=[];for(var i=0;i<=12;i++){var t=i/12,y=-75-17-t*65,a=t*Math.PI*1.4+mi*Math.PI;tm.push([ox+10*Math.cos(a),y,10*Math.sin(a)]);}o.push({type:'tube',pts:tm,col:'#4ade80',w:4.5});});
+  o.push({type:'sph',p:[0,85,0],r:8,col:'#f87171'});
+  for(var i=0;i<8;i++){var a=i/8*Math.PI*2;o.push({type:'sph',p:[15*Math.cos(a),94,15*Math.sin(a)],r:2.5,col:'rgba(251,146,60,0.4)'});}
+  return o;
+}
+
+function gTLR9(){
+  var o=[],nLRR=26,lh=7;
+  [-1,1].forEach(function(side,mi){
+    var R0=40,ox=side*36,h=[];
+    for(var i=0;i<=nLRR;i++){var t=i/nLRR,a=(t-.5)*Math.PI*1.15*side,r=R0+.04*i*i*.25;h.push([ox+r*Math.sin(a),-nLRR*lh/2+i*lh,r*(Math.cos(a)-1)]);}
+    for(var i=0;i<nLRR;i++){var isZ=i===13||i===14,col=isZ?'#a78bfa':(mi===0?'#4ea1d3':'#fb923c');o.push({type:'stick',p1:h[i],p2:h[i+1],col:col,w:isZ?8:5.5});if(isZ){var mid=[(h[i][0]+h[i+1][0])/2+side*26,(h[i][1]+h[i+1][1])/2,(h[i][2]+h[i+1][2])/2+18];o.push({type:'stick',p1:h[i],p2:mid,col:'#a78bfa',w:4});o.push({type:'stick',p1:mid,p2:h[i+1],col:'#a78bfa',w:4});o.push({type:'sph',p:mid,r:6,col:'#a78bfa'});}}
+  });
+  [[-58,'#4ade80'],[58,'#f87171']].forEach(function(d){var dy=d[0],col=d[1],pts=[];for(var i=0;i<=16;i++){var t=i/16,x=-75+150*t;pts.push([x,dy,12*Math.sin(t*Math.PI)]);}o.push({type:'tube',pts:pts,col:col,w:4});o.push({type:'sph',p:[0,dy,12],r:6.5,col:col});});
+  return o;
+}
+
+function hmgbMini(ox,oy,oz,vib){
+  var o=[],vx=vib?Math.sin(Date.now()*.005)*1.5:0,vy=vib?Math.cos(Date.now()*.007):0;
+  ox+=vx;oy+=vy;
+  var mk=function(pts,col,w){return{type:'tube',pts:pts,col:col,w:w};};
+  var h1=[];for(var i=0;i<=10;i++){var t=i/10;h1.push([ox-18+7*Math.cos(t*Math.PI*2.5),oy-30+40*t,oz+7*Math.sin(t*Math.PI*2.5)]);}o.push(mk(h1,'#4ea1d3',6));
+  var h2=[];for(var i=0;i<=8;i++){var t=i/8;h2.push([ox-18+t*30,oy+10+6*Math.cos(t*Math.PI*2),oz+6*Math.sin(t*Math.PI*2)]);}o.push(mk(h2,'#4ea1d3',5));
+  o.push({type:'sph',p:[ox-14,oy-10,oz+8],r:4,col:'#facc15'});
+  var lk=[];for(var i=0;i<=5;i++){var t=i/5;lk.push([ox+12+t*16,oy+10+8*Math.sin(t*Math.PI),oz+4*Math.cos(t*Math.PI)]);}o.push(mk(lk,'#3a5570',2.5));
+  var b1=[];for(var i=0;i<=10;i++){var t=i/10;b1.push([ox+32+7*Math.cos(t*Math.PI*2.5),oy+35-40*t,oz+7*Math.sin(t*Math.PI*2.5)]);}o.push(mk(b1,'#fb923c',6));
+  var b2=[];for(var i=0;i<=8;i++){var t=i/8;b2.push([ox+32-t*30,oy-5+6*Math.cos(t*Math.PI*2),oz+6*Math.sin(t*Math.PI*2)]);}o.push(mk(b2,'#fb923c',5));
+  o.push({type:'sph',p:[ox+28,oy+12,oz+8],r:4,col:'#facc15'});
+  for(var i=0;i<10;i++){var t=i/10,nx=ox+42+t*35,ny=oy-5-8*Math.sin(t*Math.PI),nz=oz+6*Math.cos(t*Math.PI*1.5);if(i%2===0&&i<9){var t2=(i+1)/10;o.push({type:'stick',p1:[nx,ny,nz],p2:[ox+42+t2*35,oy-5-8*Math.sin(t2*Math.PI),oz+6*Math.cos(t2*Math.PI*1.5)],col:'rgba(248,113,113,0.45)',w:2});}o.push({type:'sph',p:[nx,ny,nz],r:2,col:'rgba(248,113,113,0.35)'});}
+  return o;
+}
+
+function cpgaMini(ox,oy,oz){
+  var o=[],R=28,SA=[Math.PI/4,3*Math.PI/4,5*Math.PI/4,7*Math.PI/4];
+  for(var s=0;s<4;s++){var a0=SA[s],pp=[];for(var i=0;i<=16;i++){var t=i/16,y=oy-45+90*t,tw=t*Math.PI*3+a0;pp.push([ox+R*Math.cos(tw),y,oz+R*Math.sin(tw)]);}o.push({type:'tube',pts:pp,col:t<.3||t>.7?'#facc15':'#4ea1d3',w:3});}
+  [-30,-12,12,30].forEach(function(ty){for(var qi=0;qi<4;qi++){var qa=qi*Math.PI/2;o.push({type:'quad',pts:[[ox+6*Math.cos(qa-.3),oy+ty,oz+6*Math.sin(qa-.3)],[ox+R*Math.cos(qa-.3),oy+ty,oz+R*Math.sin(qa-.3)],[ox+R*Math.cos(qa+.3),oy+ty,oz+R*Math.sin(qa+.3)],[ox+6*Math.cos(qa+.3),oy+ty,oz+6*Math.sin(qa+.3)]],col:'rgba(167,139,250,0.18)',stroke:'rgba(167,139,250,0.35)'});}});
+  [-25,-10,10,25].forEach(function(iy){o.push({type:'sph',p:[ox,oy+iy,oz],r:5,col:'#f87171'});});
+  return o;
+}
+
+function cpgbMini(ox,oy,oz){
+  var o=[],Nb=18,RISE=11*.5,TW=Math.PI*2/10.5,R=22*.5,pts=[];
+  for(var i=0;i<=Nb;i++)pts.push([ox+R*Math.cos(i*TW),oy+i*RISE-Nb*RISE/2,oz+R*Math.sin(i*TW)]);
+  o.push({type:'tube',pts:pts,col:'#f87171',w:4});
+  for(var i=0;i<Nb;i++){var y=oy+(i+.5)*RISE-Nb*RISE/2,a=(i+.5)*TW,bR=R+8,isCpg=i===1||i===2||i===8||i===9||i===14||i===15;o.push({type:'stick',p1:[ox+R*Math.cos(a),y,oz+R*Math.sin(a)],p2:[ox+bR*Math.cos(a),y,oz+bR*Math.sin(a)],col:'rgba(100,120,150,0.25)',w:1.5});o.push({type:'sph',p:[ox+bR*Math.cos(a),y,oz+bR*Math.sin(a)],r:isCpg?5:3.5,col:isCpg?'#4ade80':'#a78bfa'});}
+  return o;
+}
+
+function rageMini(ox,oy,oz){
+  var o=[];
+  function dom(r,cy,col,n,tw){for(var i=0;i<n;i++){var a=tw+i*(Math.PI*2/n),pts=[];for(var j=0;j<=6;j++){var t=j/6-.5;pts.push([ox+r*Math.cos(a),cy+22*t,oz+r*Math.sin(a)]);}o.push({type:'tube',pts:pts,col:col,w:3});}}
+  dom(16*.55,oy+14,'#fb923c',6,0);dom(13*.55,oy-16,'#4ea1d3',5,.3);dom(11*.55,oy-44,'#a78bfa',5,.6);
+  o.push({type:'stick',p1:[ox,oy+3,oz],p2:[ox,oy-6,oz],col:'rgba(78,161,211,0.2)',w:2});
+  o.push({type:'stick',p1:[ox,oy-27,oz],p2:[ox,oy-35,oz],col:'rgba(78,161,211,0.2)',w:2});
+  o.push({type:'sph',p:[ox+8*.55,oy+3*.55,oz],r:2,col:'rgba(251,146,60,0.6)'});
+  return o;
+}
+
+function adDNAMini(ox,oy,oz,itrCol){
+  var o=[],Nd=30,RISE=6*.5,TW=Math.PI*2/10.5,R=10*.5,p1=[],p2=[];
+  for(var i=0;i<=Nd;i++){var y=oy+i*RISE-Nd*RISE/2;p1.push([ox+(R+2*.5)*Math.cos(i*TW),y,oz+(R+2*.5)*Math.sin(i*TW)]);p2.push([ox+(R+2*.5)*Math.cos(i*TW+Math.PI),y,oz+(R+2*.5)*Math.sin(i*TW+Math.PI)]);}
+  o.push({type:'tube',pts:p1,col:'#4ea1d3',w:4*.5});o.push({type:'tube',pts:p2,col:'#f87171',w:4*.5});
+  for(var i=0;i<Nd;i++){var y=oy+(i+.5)*RISE-Nd*RISE/2,a=(i+.5)*TW;o.push({type:'stick',p1:[ox+(R+2*.5)*Math.cos(a),y,oz+(R+2*.5)*Math.sin(a)],p2:[ox+(R+2*.5)*Math.cos(a+Math.PI),y,oz+(R+2*.5)*Math.sin(a+Math.PI)],col:'rgba(74,222,128,0.3)',w:2*.5});}
+  var pvA=15*TW,pvX=ox+(R+14*.5)*Math.cos(pvA),pvZ=oz+(R+14*.5)*Math.sin(pvA);
+  o.push({type:'sph',p:[pvX,oy,pvZ],r:8*.5,col:'rgba(251,146,60,0.45)'});o.push({type:'sph',p:[pvX,oy,pvZ],r:5*.5,col:'#fb923c'});o.push({type:'stick',p1:[pvX,oy,pvZ],p2:[ox+(R+3*.5)*Math.cos(pvA),oy,oz+(R+3*.5)*Math.sin(pvA)],col:'rgba(251,146,60,0.4)',w:2.5*.5});
+  return{geom:o,pviiPos:[pvX,oy,pvZ]};
+}
+
+var STATIC=[gCpgA(),gCpgB(),gAd5DNA(),gAd37DNA(),gHMGB1(),gRAGE(),gTLR9()];
+
+function gDock7(){
+  var dk=DOCK[7],p=dk.progress,o=[];
+  cpgaMini(-55,0,0).forEach(function(g){o.push(g);});
+  var hx=160+(-30-160)*Math.min(1,p/.5);var hy=30+(0-30)*Math.min(1,p/.5);var hz=50+(5-50)*Math.min(1,p/.5);
+  if(p>.5){var e=Math.min(1,(p-.5)/.5);hx=-30+(-30)*0;hy=0;hz=5;}
+  var t=Math.min(1,p/.5),e2=t*t*(3-2*t);hx=160+(-30-160)*e2;hy=30+(-30)*e2;hz=50+(5-50)*e2;
+  hmgbMini(hx,hy,hz,p>.7).forEach(function(g){o.push(g);});
+  if(p>.4){var rt=Math.min(1,(p-.4)/.5),re=rt*rt*(3-2*rt);var rx=120+(40-120)*re,ry=-120+(-20+120)*re,rz=40;rageMini(rx,ry,rz).forEach(function(g){o.push(g);});if(rt>.6){o.push({type:'hbond',p1:[hx+28,hy+5,hz],p2:[rx,ry+10,rz],col:'rgba(251,146,60,0.35)'},{ type:'hbond',p1:[hx+22,hy-2,hz],p2:[rx-5,ry+5,rz],col:'rgba(251,146,60,0.25)'}); }}
+  if(p>.85){var op=Math.min(.15,(p-.85)*1);o.push({type:'sph',p:[-10,-5,0],r:95,col:'rgba(167,139,250,'+op.toFixed(2)+')'});}
+  return o;
+}
+
+function gDock8(){
+  var dk=DOCK[8],p=dk.progress,o=[];
+  cpgbMini(0,0,0).forEach(function(g){o.push(g);});
+  var hx,hy,hz;
+  if(p<.45){var t=p/.45,e=t*t*(3-2*t);hx=140+(20-140)*e;hy=20;hz=40+(8-40)*e;}
+  else if(p<.7){var t2=(p-.45)/.25;hx=20+8*Math.sin(t2*Math.PI*4);hy=5*Math.cos(t2*Math.PI*3);hz=8+3*Math.sin(t2*Math.PI*5);}
+  else{var t3=(p-.7)/.3,e3=t3*t3;hx=20+(180-20)*e3;hy=(-40)*e3;hz=8+(60-8)*e3;}
+  hmgbMini(hx,hy,hz,p>.45&&p<.7).forEach(function(g){o.push(g);});
+  if(p>.45&&p<.7)o.push({type:'sph',p:[(hx+0)/2,(hy+0)/2,(hz+0)/2],r:15,col:'rgba(248,113,113,0.12)'});
+  return o;
+}
+
+function gDock9(){
+  var dk=DOCK[9],p=dk.progress,o=[];
+  var res=adDNAMini(0,0,0,'#2dd4bf');
+  res.geom.forEach(function(g){o.push(g);});
+  var pviiP=res.pviiPos;
+  var t=Math.min(1,p/.6),e=t*t*(3-2*t);
+  var hx=130+(-pviiP[0]*.3-130)*e,hy=-80+(pviiP[1]+80)*e,hz=50+(-pviiP[2]*.5-50)*e;
+  hmgbMini(hx,hy,hz,p>.7).forEach(function(g){o.push(g);});
+  if(p>.5){var op=Math.min(.45,(p-.5));o.push({type:'hbond',p1:[hx-14,hy-10,hz+8],p2:[0,0,0],col:'rgba(78,161,211,'+op.toFixed(2)+')'},{type:'hbond',p1:[hx-8,hy,hz],p2:pviiP,col:'rgba(251,146,60,'+op.toFixed(2)+')'});}
+  if(p>.8)o.push({type:'sph',p:[0,0,0],r:80,col:'rgba(167,139,250,0.05)'});
+  return o;
+}
+
+function gDock10(){
+  var dk=DOCK[10],p=dk.progress,o=[];
+  var res=adDNAMini(0,0,0,'#f472b6');
+  res.geom.forEach(function(g){o.push(g);});
+  var pviiP=res.pviiPos;
+  var t=Math.min(1,p/.6),e=t*t*(3-2*t);
+  var hx=130+(-pviiP[0]*.3-130)*e,hy=-80+(pviiP[1]+80)*e,hz=50+(-pviiP[2]*.5-50)*e;
+  hmgbMini(hx,hy,hz,p>.7).forEach(function(g){o.push(g);});
+  if(p>.5){var op=Math.min(.45,(p-.5));o.push({type:'hbond',p1:[hx-14,hy-10,hz+8],p2:[0,0,0],col:'rgba(78,161,211,'+op.toFixed(2)+')'},{type:'hbond',p1:[hx-8,hy,hz],p2:pviiP,col:'rgba(251,146,60,'+op.toFixed(2)+')'});}
+  if(p>.8)o.push({type:'sph',p:[0,0,0],r:80,col:'rgba(244,114,182,0.05)'});
+  return o;
+}
+
+function gCompare(){
+  var o=[],TTW=Math.PI*2/10.5;
+  // CpG-A left
+  var OA=-155,SA=[Math.PI/4,3*Math.PI/4,5*Math.PI/4,7*Math.PI/4];
+  for(var s=0;s<4;s++){var a0=SA[s],pp=[];for(var i=0;i<=20;i++){var t=i/20,y=-85+170*t,tw=t*Math.PI*3+a0;pp.push([OA+28*Math.cos(tw),y,28*Math.sin(tw)]);}o.push({type:'tube',pts:pp,col:t<.3||t>.7?'#facc15':'#4ea1d3',w:3});}
+  for(var ti=0;ti<4;ti++){var ty=-60+40*ti;for(var qi=0;qi<4;qi++){var qa=qi*Math.PI/2;o.push({type:'quad',pts:[[OA+13*Math.cos(qa-.22),ty,13*Math.sin(qa-.22)],[OA+28*Math.cos(qa-.32),ty,28*Math.sin(qa-.32)],[OA+28*Math.cos(qa+.32),ty,28*Math.sin(qa+.32)],[OA+13*Math.cos(qa+.22),ty,13*Math.sin(qa+.22)]],col:'rgba(167,139,250,0.25)',stroke:'rgba(167,139,250,0.55)'});}}
+  o.push({type:'sph',p:[OA,0,0],r:55,col:'rgba(167,139,250,0.07)'});
+  // CpG-B center
+  var OB=0,NB=18,RB=22,bpts=[];
+  for(var i=0;i<=NB;i++)bpts.push([OB+RB*Math.cos(i*TTW),i*9-NB*9/2,RB*Math.sin(i*TTW)]);
+  o.push({type:'tube',pts:bpts,col:'#f87171',w:4});
+  // Ad5 right
+  var OD=155,ND=26,RD=9,dp1=[],dp2=[];
+  for(var i=0;i<=ND;i++){var y=i*RD-ND*RD/2;dp1.push([OD+(RD+3)*Math.cos(i*TTW),y,(RD+3)*Math.sin(i*TTW)]);dp2.push([OD+(RD+3)*Math.cos(i*TTW+Math.PI),y,(RD+3)*Math.sin(i*TTW+Math.PI)]);}
+  o.push({type:'tube',pts:dp1,col:'#4ea1d3',w:3.5});o.push({type:'tube',pts:dp2,col:'#f87171',w:3.5});
+  for(var i=0;i<ND;i++){var y=(i+.5)*RD-ND*RD/2,a=(i+.5)*TTW;o.push({type:'stick',p1:[OD+(RD+3)*Math.cos(a),y,(RD+3)*Math.sin(a)],p2:[OD+(RD+3)*Math.cos(a+Math.PI),y,(RD+3)*Math.sin(a+Math.PI)],col:'rgba(74,222,128,0.3)',w:2});}
+  o.push({type:'sph',p:[OD+22,0,0],r:8,col:'rgba(251,146,60,0.45)'});o.push({type:'sph',p:[OD+22,0,0],r:5,col:'#fb923c'});
+  return o;
+}
+
+function getGeom(idx){
+  if(idx<7)return STATIC[idx];
+  if(idx===7)return gDock7();if(idx===8)return gDock8();
+  if(idx===9)return gDock9();if(idx===10)return gDock10();
+  if(idx===11)return gCompare();return[];
+}
+
+function draw(idx){
+  var c=document.getElementById('c'+idx);if(!c)return;
+  var dpr=window.devicePixelRatio||1,cw=c.clientWidth,ch=c.clientHeight;
+  if(cw<=0||ch<=0)return;
+  if(c.width!==Math.round(cw*dpr)||c.height!==Math.round(ch*dpr)){c.width=Math.round(cw*dpr);c.height=Math.round(ch*dpr);}
+  var ctx=c.getContext('2d');
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,cw,ch);
+  ctx.fillStyle='#0e1117';ctx.fillRect(0,0,cw,ch);
+  var s=S[idx],fov=700,CX=cw/2,CY=ch/2,mat=mrot(s.rx,s.ry),geom=getGeom(idx);
+  var sorted=[];
+  for(var gi=0;gi<geom.length;gi++){
+    var obj=geom[gi],z=0;
+    if(obj.type==='tube'||obj.type==='tubeGrad'){var m=obj.pts[Math.floor(obj.pts.length/2)];z=proj(m,mat,CX,CY,fov,s.zoom)[2];}
+    else if(obj.type==='sph'){z=proj(obj.p,mat,CX,CY,fov,s.zoom)[2];}
+    else if(obj.type==='quad'){var c2=[0,0,0];for(var qi=0;qi<obj.pts.length;qi++){c2[0]+=obj.pts[qi][0]/4;c2[1]+=obj.pts[qi][1]/4;c2[2]+=obj.pts[qi][2]/4;}z=proj(c2,mat,CX,CY,fov,s.zoom)[2];}
+    else if(obj.type==='hbond'||obj.type==='stick'){var m=[(obj.p1[0]+obj.p2[0])/2,(obj.p1[1]+obj.p2[1])/2,(obj.p1[2]+obj.p2[2])/2];z=proj(m,mat,CX,CY,fov,s.zoom)[2];}
+    sorted.push({o:obj,z:z});
+  }
+  sorted.sort(function(a,b){return b.z-a.z;});
+  for(var si=0;si<sorted.length;si++){
+    var obj=sorted[si].o;
+    if(obj.type==='tube'){
+      ctx.beginPath();var f=true;
+      for(var pi=0;pi<obj.pts.length;pi++){var xy=proj(obj.pts[pi],mat,CX,CY,fov,s.zoom);if(f){ctx.moveTo(xy[0],xy[1]);f=false;}else ctx.lineTo(xy[0],xy[1]);}
+      ctx.strokeStyle=obj.col;ctx.lineWidth=obj.w||3;ctx.lineCap='round';ctx.lineJoin='round';ctx.stroke();
+    }else if(obj.type==='sph'){
+      var pxyz=proj(obj.p,mat,CX,CY,fov,s.zoom),sc=fov/(fov+pxyz[2]*s.zoom),r=Math.max(1,(obj.r||5)*s.zoom*sc);
+      ctx.beginPath();ctx.arc(pxyz[0],pxyz[1],r,0,Math.PI*2);ctx.fillStyle=obj.col;ctx.fill();
+      if(r>3){ctx.beginPath();ctx.arc(pxyz[0]-r*.28,pxyz[1]-r*.28,r*.28,0,Math.PI*2);ctx.fillStyle='rgba(255,255,255,0.22)';ctx.fill();}
+    }else if(obj.type==='quad'){
+      ctx.beginPath();var f=true;
+      for(var qi=0;qi<obj.pts.length;qi++){var xy=proj(obj.pts[qi],mat,CX,CY,fov,s.zoom);if(f){ctx.moveTo(xy[0],xy[1]);f=false;}else ctx.lineTo(xy[0],xy[1]);}
+      ctx.closePath();ctx.fillStyle=obj.col;ctx.fill();ctx.strokeStyle=obj.stroke||obj.col;ctx.lineWidth=.8;ctx.stroke();
+    }else if(obj.type==='hbond'){
+      var xy1=proj(obj.p1,mat,CX,CY,fov,s.zoom),xy2=proj(obj.p2,mat,CX,CY,fov,s.zoom);
+      ctx.save();ctx.setLineDash([3,3]);ctx.beginPath();ctx.moveTo(xy1[0],xy1[1]);ctx.lineTo(xy2[0],xy2[1]);ctx.strokeStyle=obj.col;ctx.lineWidth=1;ctx.stroke();ctx.restore();
+    }else if(obj.type==='stick'){
+      var xy1=proj(obj.p1,mat,CX,CY,fov,s.zoom),xy2=proj(obj.p2,mat,CX,CY,fov,s.zoom);
+      ctx.beginPath();ctx.moveTo(xy1[0],xy1[1]);ctx.lineTo(xy2[0],xy2[1]);ctx.strokeStyle=obj.col;ctx.lineWidth=obj.w||2;ctx.lineCap='round';ctx.stroke();
+    }
+  }
+  // Subtle grid
+  ctx.save();ctx.setLineDash([1,6]);ctx.strokeStyle='rgba(78,161,211,0.04)';ctx.lineWidth=.5;
+  for(var gi=0;gi<5;gi++){var gx=cw*.2*gi;ctx.beginPath();ctx.moveTo(gx,0);ctx.lineTo(gx,ch);ctx.stroke();}
+  ctx.restore();
+  if(idx===11){
+    ctx.font='500 10px "IBM Plex Mono",monospace';ctx.textAlign='center';
+    [[-155,'CpG-A','#a78bfa','LLPS competent'],[0,'CpG-B','#f87171','No LLPS'],[155,'Ad5 DNA','#4ea1d3','Sequestered']].forEach(function(item){
+      var xy=proj([item[0],-105,0],mat,CX,CY,fov,s.zoom);ctx.fillStyle=item[2];ctx.fillText(item[1],xy[0],xy[1]);
+      ctx.font='9px "IBM Plex Mono",monospace';var xy2=proj([item[0],85,0],mat,CX,CY,fov,s.zoom);ctx.fillStyle=item[2];ctx.fillText(item[3],xy2[0],xy2[1]);
+      ctx.font='500 10px "IBM Plex Mono",monospace';
+    });ctx.textAlign='left';
+  }
+}
+
+var last=0;
+function loop(ts){
+  var dt=Math.min((ts-last)/1000,.05);last=ts;
+  for(var i=0;i<N;i++)if(S[i].auto&&!D[i].on)S[i].ry+=.009;
+  tickDock(dt);draw(active);
+  requestAnimationFrame(loop);
+}
+requestAnimationFrame(function(ts){sz(0);last=ts;requestAnimationFrame(loop);});
+window.addEventListener('resize',function(){sz(active);});
+})();
+</script>
+</body>
+</html>
